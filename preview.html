@@ -103,7 +103,7 @@
       animation: fadeIn 1s infinite alternate;
     }
     
-    /* Chat modal - FIXED: Ensure it's visible */
+    /* Chat modal */
     .chat-modal {
       position: fixed;
       top: 0;
@@ -214,7 +214,7 @@
       line-height: 1.4;
     }
     
-    /* TIMESTAMP - CORRECTED */
+    /* FIXED TIMESTAMP STYLES - CORRECTED */
     .message-timestamp {
       position: absolute;
       bottom: 4px;
@@ -236,44 +236,41 @@
       background: rgba(0, 0, 0, 0.3);
     }
     
-    /* Blocked info - FIXED: Proper positioning */
+    /* Blocked info */
     .blocked-info {
       background: rgba(239, 68, 68, 0.1);
-      padding: 10px 12px 24px 12px; /* Extra bottom padding for timestamp */
+      padding: 10px 12px;
       border-radius: 12px;
       margin-top: 8px;
       border-left: 3px solid #dc2626;
       position: relative;
+      padding-bottom: 24px; /* Add space for timestamp */
     }
     
     .blocked-name {
       font-weight: 600;
       color: #7f1d1d;
       font-size: 15px;
-      margin-bottom: 4px;
     }
     
     .blocked-reason {
       font-size: 13px;
       color: #7f1d1d;
-      line-height: 1.3;
+      margin-top: 4px;
     }
     
+    /* Move timestamp inside blocked-info for proper positioning */
     .blocked-info .message-timestamp {
-      position: absolute;
       bottom: 4px;
       right: 8px;
       font-size: 9px;
-      background: rgba(255, 255, 255, 0.9);
-      padding: 1px 6px;
-      border-radius: 8px;
     }
     
     .message.sent .blocked-info .message-timestamp {
       right: auto;
       left: 8px;
-      color: rgba(255, 255, 255, 0.9);
-      background: rgba(0, 0, 0, 0.3);
+      color: rgba(255, 255, 255, 0.8);
+      background: rgba(0, 0, 0, 0.2);
     }
     
     /* Account modal */
@@ -284,7 +281,7 @@
       right: 0;
       bottom: 0;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: none;
+      display: flex;
       align-items: center;
       justify-content: center;
       z-index: 2000;
@@ -301,19 +298,14 @@
       text-align: center;
     }
     
-    /* Loading states - FIXED: Proper positioning in chat modal */
+    /* Loading states */
     .loading {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: #f0f2f5;
-      z-index: 5;
+      height: 100%;
+      gap: 16px;
     }
     
     .spinner {
@@ -345,14 +337,6 @@
         right: 10px;
         padding: 4px 10px;
         font-size: 11px;
-      }
-      
-      .chat-header {
-        padding: 12px 16px;
-      }
-      
-      .chat-messages {
-        padding: 16px;
       }
     }
   </style>
@@ -489,35 +473,33 @@
       </button>
     </div>
     
-    <!-- Chat Area - FIXED: Proper structure -->
-    <div class="chat-messages-wrapper" style="flex: 1; position: relative; background: #f0f2f5;">
-      <div id="chat-messages" class="chat-messages">
-        <!-- Messages will be loaded here -->
-      </div>
-      
-      <!-- Loading -->
-      <div id="chat-loading" class="loading">
-        <div class="spinner"></div>
-        <div class="text-gray-600">Loading messages...</div>
-      </div>
-      
-      <!-- Empty -->
-      <div id="chat-empty" class="loading hidden">
-        <i class="fas fa-comment-slash text-gray-300 text-4xl"></i>
-        <div class="text-gray-600">No reports yet</div>
-        <button id="start-report" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">
-          Make First Report
-        </button>
-      </div>
-      
-      <!-- Error -->
-      <div id="chat-error" class="loading hidden">
-        <i class="fas fa-exclamation-triangle text-red-400 text-4xl"></i>
-        <div class="text-gray-600">Failed to load</div>
-        <button id="retry-chat" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">
-          Try Again
-        </button>
-      </div>
+    <!-- Chat Area -->
+    <div id="chat-messages" class="chat-messages">
+      <!-- Messages will be loaded here -->
+    </div>
+    
+    <!-- Loading -->
+    <div id="chat-loading" class="loading">
+      <div class="spinner"></div>
+      <div class="text-gray-600">Loading messages...</div>
+    </div>
+    
+    <!-- Empty -->
+    <div id="chat-empty" class="loading hidden">
+      <i class="fas fa-comment-slash text-gray-300 text-4xl"></i>
+      <div class="text-gray-600">No reports yet</div>
+      <button id="start-report" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">
+        Make First Report
+      </button>
+    </div>
+    
+    <!-- Error -->
+    <div id="chat-error" class="loading hidden">
+      <i class="fas fa-exclamation-triangle text-red-400 text-4xl"></i>
+      <div class="text-gray-600">Failed to load</div>
+      <button id="retry-chat" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">
+        Try Again
+      </button>
     </div>
   </div>
 
@@ -856,7 +838,7 @@
           this.submitReport();
         });
         
-        // Chat - FIXED: Ensure buttons work
+        // Chat
         document.getElementById('view-chat-btn').addEventListener('click', () => this.openChat());
         document.getElementById('close-chat').addEventListener('click', () => this.closeChat());
         document.getElementById('start-report').addEventListener('click', () => this.closeChat());
@@ -1016,7 +998,6 @@
       }
       
       async openChat() {
-        console.log('Opening chat...');
         document.getElementById('chat-modal').classList.add('active');
         await this.loadChat();
         this.messageManager.startAutoUpdate((messages) => {
@@ -1025,19 +1006,16 @@
       }
       
       closeChat() {
-        console.log('Closing chat...');
         document.getElementById('chat-modal').classList.remove('active');
         this.messageManager.stopAutoUpdate();
       }
       
       async loadChat() {
-        console.log('Loading chat messages...');
         const loading = document.getElementById('chat-loading');
         const empty = document.getElementById('chat-empty');
         const error = document.getElementById('chat-error');
         const messages = document.getElementById('chat-messages');
         
-        // Show loading, hide others
         loading.classList.remove('hidden');
         empty.classList.add('hidden');
         error.classList.add('hidden');
@@ -1045,7 +1023,6 @@
         
         try {
           const chatMessages = await this.messageManager.loadFromGoogleSheet();
-          console.log('Loaded messages:', chatMessages.length);
           
           if (chatMessages.length === 0) {
             loading.classList.add('hidden');
@@ -1063,7 +1040,7 @@
         } catch (error) {
           console.error('Chat load error:', error);
           loading.classList.add('hidden');
-          this.chatError.classList.remove('hidden');
+          error.classList.remove('hidden');
         }
       }
       
@@ -1147,7 +1124,6 @@
     
     // Initialize app
     window.addEventListener('DOMContentLoaded', () => {
-      console.log('DOM loaded, initializing app...');
       window.blockedListApp = new BlockedListApp();
     });
   </script>
