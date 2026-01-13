@@ -52,7 +52,7 @@
     .modal-content {
       background: white;
       border-radius: 1.5rem;
-      max-width: 800px;
+      max-width: 900px;
       width: 100%;
       max-height: 80vh;
       overflow: hidden;
@@ -88,7 +88,7 @@
       <form id="submission-form" class="space-y-5">
        <div>
         <label for="name-input" class="block text-sm font-semibold mb-2" style="color: #2d3748;">Blocked Person *</label>
-        <input type="text" id="name-input" name="name" required placeholder="Enter your full name..." class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all" style="border-color: #e2e8f0; color: #2d3748;">
+        <input type="text" id="name-input" name="name" required placeholder="Enter the name..." class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all" style="border-color: #e2e8f0; color: #2d3748;">
        </div>
       
        <div>
@@ -114,7 +114,7 @@
         <svg class="h-6 w-6 mr-2" style="color: #28a745;" fill="none" viewbox="0 0 24 24" stroke="currentColor">
          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <p class="font-semibold" style="color: #155724;">Success! Your name has been submitted.</p>
+        <p class="font-semibold" style="color: #155724;">Success! Entry has been submitted.</p>
        </div>
       </div>
       
@@ -160,15 +160,20 @@
           <table class="w-full border-collapse">
             <thead>
               <tr class="border-b-2" style="border-color: #e2e8f0;">
+                <th class="text-left py-3 px-4 font-semibold" style="color: #2d3748;">Date & Time</th>
                 <th class="text-left py-3 px-4 font-semibold" style="color: #2d3748;">Name</th>
                 <th class="text-left py-3 px-4 font-semibold" style="color: #2d3748;">Notes</th>
-                <th class="text-left py-3 px-4 font-semibold" style="color: #2d3748;">Date</th>
               </tr>
             </thead>
             <tbody id="list-body">
               <!-- List items will be populated here -->
             </tbody>
           </table>
+          
+          <!-- No Data Message -->
+          <div id="no-data" class="hidden text-center py-8">
+            <p class="text-lg" style="color: #718096;">No entries found in the list.</p>
+          </div>
         </div>
         
         <!-- Error State -->
@@ -188,8 +193,8 @@
   <script>
     // Default configuration
     const defaultConfig = {
-      form_title: 'Submit Your Name',
-      form_description: 'Fill out the form below to add your name to the list',
+      form_title: 'Blocked List',
+      form_description: 'Fill out the form below to add the blocked one to the list',
       submit_button_text: 'Submit',
       view_button_text: 'View List',
       background_gradient_start: '#667eea',
@@ -220,14 +225,10 @@
     const loadingState = document.getElementById('loading-state');
     const listContainer = document.getElementById('list-container');
     const listBody = document.getElementById('list-body');
+    const noData = document.getElementById('no-data');
     const listError = document.getElementById('list-error');
     const listErrorText = document.getElementById('list-error-text');
     const retryLoad = document.getElementById('retry-load');
-
-    // Google Sheets configuration
-    const SHEET_ID = '1KKB-uxdVFvRSGHex192unt9D691Zh9SwUILXtD5Q7GM';
-    const SHEET_NAME = 'Sheet1'; // Change if your sheet has a different name
-    const API_KEY = ''; // You'll need to add your Google API key here
 
     // Hide messages
     function hideMessages() {
@@ -269,7 +270,7 @@
       hideMessages();
       
       try {
-        // Google Form endpoint
+        // Google Form endpoint (from your original code)
         const FORM_ACTION_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfOzXT3fXroXRTYQ7J--pMWvpdJ_FPmXAvDNLS3z-UnYnti5g/formResponse';
         
         // Create form data with Google Form field IDs
@@ -298,40 +299,73 @@
       }
     });
 
-    // Function to fetch data from Google Sheets
+    // Function to fetch data from Google Sheets using CSV export (more reliable)
     async function fetchSheetData() {
       try {
         loadingState.classList.remove('hidden');
         listContainer.classList.add('hidden');
+        noData.classList.add('hidden');
         listError.classList.add('hidden');
         
-        // If you have an API key, use this URL:
-        // const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}?key=${API_KEY}`;
+        // Use CSV export which is more reliable for public sheets
+        const csvUrl = `https://docs.google.com/spreadsheets/d/e/2PACX-1vT-vMzwP8GR6AJTlKDLjKprX-xcTzH7_mqOLydufby1xGYewdOmZf49YwmxfvVMOVubtrEja-a7O8xY/pub?output=csv`;
         
-        // For public sheet (no API key needed):
-        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&tq&gid=0`;
+        const response = await fetch(csvUrl);
+        const csvText = await response.text();
         
-        const response = await fetch(url);
-        const text = await response.text();
-        
-        // Parse the Google Sheets JSON response
-        const json = JSON.parse(text.substring(47).slice(0, -2));
-        const rows = json.table.rows;
+        // Parse CSV
+        const rows = parseCSV(csvText);
         
         // Clear previous data
         listBody.innerHTML = '';
         
-        // Populate table
-        rows.forEach((row, index) => {
-          // Skip header row if needed
-          if (index === 0 && row.c[0]?.v === 'Name') return;
-          
+        if (rows.length === 0) {
+          loadingState.classList.add('hidden');
+          noData.classList.remove('hidden');
+          listContainer.classList.remove('hidden');
+          return;
+        }
+        
+        // Get headers (first row)
+        const headers = rows[0];
+        
+        // Find column indices
+        const timestampIndex = headers.findIndex(h => 
+          h.toLowerCase().includes('timestamp') || h.toLowerCase().includes('date')
+        );
+        const nameIndex = headers.findIndex(h => 
+          h.toLowerCase().includes('name') || h.toLowerCase().includes('blocked')
+        );
+        const notesIndex = headers.findIndex(h => 
+          h.toLowerCase().includes('notes') || h.toLowerCase().includes('business')
+        );
+        
+        // Display data rows (skip header row)
+        rows.slice(1).forEach((row, index) => {
           const tr = document.createElement('tr');
           tr.className = index % 2 === 0 ? 'bg-gray-50' : 'bg-white';
+          
+          const timestamp = timestampIndex >= 0 ? (row[timestampIndex] || '') : '';
+          const name = nameIndex >= 0 ? (row[nameIndex] || '') : '';
+          const notes = notesIndex >= 0 ? (row[notesIndex] || '') : '';
+          
+          // Format date if it exists
+          let formattedDate = timestamp;
+          if (timestamp) {
+            try {
+              const date = new Date(timestamp);
+              if (!isNaN(date.getTime())) {
+                formattedDate = date.toLocaleString();
+              }
+            } catch (e) {
+              // Keep original if parsing fails
+            }
+          }
+          
           tr.innerHTML = `
-            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748;">${row.c[0]?.v || ''}</td>
-            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748;">${row.c[1]?.v || ''}</td>
-            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748;">${row.c[2]?.v || ''}</td>
+            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748; white-space: nowrap;">${formattedDate}</td>
+            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748;">${name}</td>
+            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748;">${notes}</td>
           `;
           listBody.appendChild(tr);
         });
@@ -345,6 +379,56 @@
         listErrorText.textContent = 'Failed to load list. Please try again.';
         listError.classList.remove('hidden');
       }
+    }
+
+    // Simple CSV parser
+    function parseCSV(csvText) {
+      const rows = [];
+      let currentRow = [];
+      let currentCell = '';
+      let insideQuotes = false;
+      
+      for (let i = 0; i < csvText.length; i++) {
+        const char = csvText[i];
+        const nextChar = csvText[i + 1];
+        
+        if (char === '"') {
+          if (insideQuotes && nextChar === '"') {
+            // Escaped quote
+            currentCell += '"';
+            i++; // Skip next character
+          } else {
+            insideQuotes = !insideQuotes;
+          }
+        } else if (char === ',' && !insideQuotes) {
+          // End of cell
+          currentRow.push(currentCell);
+          currentCell = '';
+        } else if (char === '\n' && !insideQuotes) {
+          // End of row
+          currentRow.push(currentCell);
+          rows.push(currentRow);
+          currentRow = [];
+          currentCell = '';
+        } else if (char === '\r' && nextChar === '\n' && !insideQuotes) {
+          // Windows line ending
+          currentRow.push(currentCell);
+          rows.push(currentRow);
+          currentRow = [];
+          currentCell = '';
+          i++; // Skip the \n
+        } else {
+          currentCell += char;
+        }
+      }
+      
+      // Add last row if exists
+      if (currentCell !== '' || currentRow.length > 0) {
+        currentRow.push(currentCell);
+        rows.push(currentRow);
+      }
+      
+      return rows;
     }
 
     // Open modal and load data
@@ -448,6 +532,9 @@
     if (window.elementSdk) {
       window.elementSdk.init(elementHandler);
     }
+
+    // Auto-focus name input on page load
+    document.getElementById('name-input').focus();
   </script>
  </body>
 </html>
