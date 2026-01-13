@@ -6,108 +6,105 @@
   <title>Blocked List Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/_sdk/element_sdk.js"></script>
-  <!-- Firebase for real-time viewer count -->
-  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
+    /* COMPLETE CSS RESET - FIX SCROLLING */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      -webkit-overflow-scrolling: touch;
     }
     
     html, body {
       height: 100%;
       width: 100%;
-      overflow: hidden;
+      overflow: hidden; /* CRITICAL: Prevent page scrolling */
       font-family: 'Outfit', sans-serif;
+      position: fixed; /* CRITICAL: Fix the page */
     }
     
-    /* Prevent scrolling on body */
+    /* Remove ALL possible scrolling from body */
     body {
       position: fixed;
-      width: 100%;
-      height: 100%;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
     }
     
+    /* Animations */
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
     
-    @keyframes slideInRight {
-      from { opacity: 0; transform: translateX(30px); }
-      to { opacity: 1; transform: translateX(0); }
+    @keyframes slideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
     
-    @keyframes slideInLeft {
-      from { opacity: 0; transform: translateX(-30px); }
-      to { opacity: 1; transform: translateX(0); }
-    }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    .slide-in { animation: slideIn 0.3s ease-out; }
     
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-    
-    .fade-in { animation: fadeIn 0.3s ease-out forwards; }
-    .slide-in-right { animation: slideInRight 0.3s ease-out forwards; }
-    .slide-in-left { animation: slideInLeft 0.3s ease-out forwards; }
-    .pulse { animation: pulse 2s infinite; }
-    
-    /* Main app - FIXED NO SCROLL */
+    /* ================= MAIN APP ================= */
+    /* MAIN WRAPPER - ABSOLUTELY NO SCROLLING */
     #app-wrapper {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
-      overflow: hidden;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1;
     }
     
-    /* Scrollable content area INSIDE app */
+    /* APP CONTENT - ABSOLUTELY NO SCROLLING */
     .app-content {
+      width: 100%;
+      max-width: 500px;
       height: 100%;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+      max-height: 800px;
+      display: flex;
+      flex-direction: column;
     }
     
-    /* Custom scrollbar */
-    .app-content::-webkit-scrollbar {
-      width: 8px;
+    /* CARD - WITH CONTROLLED SCROLLING */
+    .app-card {
+      background: white;
+      border-radius: 24px;
+      padding: 24px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden; /* CRITICAL: Contain scrolling */
     }
     
-    .app-content::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-    }
-    
-    .app-content::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 10px;
-    }
-    
-    .app-content::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.5);
-    }
-    
-    /* Chat modal */
+    /* ================= CHAT MODAL ================= */
     .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
-      background-color: rgba(0, 0, 0, 0.9);
-      display: flex;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
       align-items: center;
       justify-content: center;
-      z-index: 2000;
+      z-index: 1000;
       padding: 0;
       backdrop-filter: blur(10px);
+    }
+    
+    .modal-overlay.active {
+      display: flex;
     }
     
     .modal-content {
@@ -116,59 +113,62 @@
       height: 100%;
       display: flex;
       flex-direction: column;
-      box-shadow: none;
+      position: relative;
     }
     
-    /* Modal header - fixed top */
+    /* MODAL HEADER - FIXED */
     .modal-header {
-      padding: 18px 20px;
+      padding: 16px 20px;
       border-bottom: 1px solid #e5e5ea;
       background: white;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
       flex-shrink: 0;
       position: sticky;
       top: 0;
       z-index: 10;
     }
     
-    /* Chat container - scrollable */
-    .chat-container {
+    /* CHAT AREA - SCROLLABLE CONTENT */
+    .chat-area {
+      flex: 1;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      padding: 20px;
-      overflow-y: auto;
-      flex: 1;
-      min-height: 0; /* Important for flex scroll */
     }
     
-    /* Chat scrollbar */
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    /* CUSTOM SCROLLBAR */
     .chat-container::-webkit-scrollbar {
       width: 6px;
     }
     
     .chat-container::-webkit-scrollbar-track {
       background: #f1f1f1;
-      border-radius: 10px;
+      border-radius: 3px;
     }
     
     .chat-container::-webkit-scrollbar-thumb {
       background: #c1c1c1;
-      border-radius: 10px;
+      border-radius: 3px;
     }
     
     .chat-container::-webkit-scrollbar-thumb:hover {
       background: #a1a1a1;
     }
     
-    /* Chat message styles */
+    /* ================= CHAT MESSAGES ================= */
     .chat-message {
       display: flex;
       align-items: flex-start;
-      gap: 12px;
-      max-width: 100%;
+      gap: 10px;
+      max-width: 85%;
     }
     
     .chat-message.sent {
@@ -176,120 +176,92 @@
       flex-direction: row-reverse;
     }
     
-    /* PROFILE PICTURES - FIXED to show actual images */
+    /* AVATAR - FIXED SIZE */
     .chat-avatar {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      object-fit: cover;
       flex-shrink: 0;
-      border: 3px solid;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
       font-weight: bold;
-      font-size: 16px;
-      overflow: hidden;
+      font-size: 14px;
+      color: white;
     }
     
-    .chat-avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    
-    .chat-message:not(.sent) .chat-avatar {
-      border-color: #e5e5ea;
-    }
-    
-    .chat-message.sent .chat-avatar {
-      border-color: rgba(102, 126, 234, 0.4);
-    }
-    
+    /* BUBBLE */
     .chat-bubble {
-      padding: 14px 18px;
-      border-radius: 20px;
-      position: relative;
-      word-wrap: break-word;
-      max-width: 75%;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 12px 16px;
+      border-radius: 18px;
+      max-width: calc(100% - 50px);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
     
     .chat-message:not(.sent) .chat-bubble {
-      background-color: #ffffff;
-      border: 1px solid #e5e5ea;
-      border-radius: 20px 20px 20px 5px;
+      background: #f0f2f5;
+      border-radius: 18px 18px 18px 4px;
     }
     
     .chat-message.sent .chat-bubble {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      border-radius: 20px 20px 5px 20px;
+      border-radius: 18px 18px 4px 18px;
     }
     
+    /* SENDER NAME */
     .chat-sender {
-      font-size: 13px;
-      font-weight: 700;
-      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
     }
     
-    .chat-message:not(.sent) .chat-sender {
-      color: #4a5568;
-    }
-    
-    .chat-message.sent .chat-sender {
-      color: rgba(255, 255, 255, 0.95);
-    }
-    
-    .chat-time {
-      font-size: 11px;
-      opacity: 0.8;
-      margin-top: 8px;
-      text-align: right;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 5px;
-    }
-    
+    /* BLOCKED INFO */
     .blocked-info {
-      background-color: rgba(239, 68, 68, 0.12);
-      padding: 12px 14px;
-      border-radius: 14px;
-      margin-top: 10px;
-      border-left: 4px solid #dc2626;
+      background: rgba(239, 68, 68, 0.1);
+      padding: 10px 12px;
+      border-radius: 12px;
+      margin-top: 8px;
+      border-left: 3px solid #dc2626;
     }
     
     .blocked-label {
-      font-size: 12px;
-      font-weight: 800;
+      font-size: 11px;
+      font-weight: 700;
       color: #dc2626;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
     }
     
     .blocked-name {
-      font-weight: 700;
+      font-weight: 600;
       color: #7f1d1d;
-      font-size: 16px;
+      font-size: 15px;
     }
     
     .blocked-notes {
-      font-size: 14px;
+      font-size: 13px;
       color: #7f1d1d;
-      margin-top: 8px;
-      padding-top: 8px;
+      margin-top: 6px;
+      padding-top: 6px;
       border-top: 1px solid rgba(220, 38, 38, 0.2);
     }
     
-    /* Account modal */
+    /* TIMESTAMP */
+    .chat-timestamp {
+      font-size: 10px;
+      opacity: 0.7;
+      margin-top: 4px;
+      text-align: right;
+      font-style: italic;
+    }
+    
+    /* ================= ACCOUNT MODAL ================= */
     .account-modal {
       position: fixed;
       top: 0;
@@ -297,112 +269,42 @@
       right: 0;
       bottom: 0;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: center;
-      z-index: 3000;
+      z-index: 2000;
       padding: 20px;
+    }
+    
+    .account-modal.active {
+      display: flex;
     }
     
     .account-card {
       background: white;
       border-radius: 24px;
-      max-width: 440px;
+      max-width: 400px;
       width: 100%;
-      padding: 40px;
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+      padding: 32px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
       text-align: center;
     }
     
-    .avatar-preview-container {
-      position: relative;
-      width: 120px;
-      height: 120px;
-      margin: 0 auto 25px;
-    }
-    
-    .avatar-preview {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 5px solid #667eea;
-      cursor: pointer;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    .avatar-change-btn {
-      position: absolute;
-      bottom: 5px;
-      right: 5px;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #667eea;
-      color: white;
-      border: 3px solid white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-    
-    /* User profile in form */
-    .user-profile {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      padding: 16px;
-      background: rgba(102, 126, 234, 0.08);
-      border-radius: 16px;
-      margin-bottom: 24px;
-      border: 2px solid rgba(102, 126, 234, 0.2);
-    }
-    
-    .user-profile-img {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 3px solid #667eea;
-    }
-    
-    .user-profile-info {
-      flex: 1;
-      text-align: left;
-    }
-    
-    .user-profile-name {
-      font-weight: 700;
-      color: #2d3748;
-      font-size: 18px;
-      margin-bottom: 4px;
-    }
-    
-    .user-profile-status {
-      font-size: 13px;
-      color: #718096;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    
-    /* Live viewers indicator */
+    /* ================= LIVE VIEWERS ================= */
     .live-viewers {
       position: absolute;
-      top: 20px;
-      right: 20px;
-      z-index: 100;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
+      top: 16px;
+      right: 16px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
       padding: 8px 16px;
       border-radius: 20px;
       font-size: 14px;
       display: flex;
       align-items: center;
       gap: 8px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
     }
     
     .live-dot {
@@ -410,21 +312,48 @@
       height: 8px;
       background: #ff4757;
       border-radius: 50%;
-      animation: pulse 1.5s infinite;
+      animation: fadeIn 1.5s infinite alternate;
     }
     
-    .viewer-count {
-      font-weight: bold;
+    /* ================= LOADING STATES ================= */
+    .loading-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
     }
     
-    /* Responsive */
+    .loading-state.active {
+      display: flex;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e5e5ea;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* ================= RESPONSIVE ================= */
     @media (max-width: 640px) {
-      .modal-content {
-        border-radius: 0;
+      #app-wrapper {
+        padding: 10px;
       }
       
-      .account-card {
-        padding: 30px 20px;
+      .app-content {
+        max-height: none;
+      }
+      
+      .app-card {
+        border-radius: 16px;
+        padding: 16px;
       }
       
       .live-viewers {
@@ -434,225 +363,191 @@
         font-size: 12px;
       }
     }
+    
+    /* ================= UTILITIES ================= */
+    .hidden {
+      display: none !important;
+    }
+    
+    /* Prevent text selection */
+    .no-select {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    /* Smooth transitions */
+    .smooth-transition {
+      transition: all 0.3s ease;
+    }
   </style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
 </head>
-<body class="h-full">
-  <!-- Account Setup Modal -->
+<body class="h-full no-select">
+  <!-- Account Creation Modal -->
   <div id="account-modal" class="account-modal">
     <div class="account-card">
-      <div class="mb-8">
-        <h2 class="text-3xl font-bold mb-3" style="color: #2d3748;">👤 Create Your Profile</h2>
-        <p class="text-sm" style="color: #718096;">Set up once, then start contributing to the community</p>
+      <h2 class="text-2xl font-bold mb-2">👤 Create Profile</h2>
+      <p class="text-gray-600 mb-6">Set up once, contribute forever</p>
+      
+      <div class="mb-6">
+        <label class="block text-sm font-semibold mb-2 text-left">Your Name</label>
+        <input type="text" id="account-name" placeholder="Enter your name" 
+               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
       </div>
       
-      <div class="avatar-preview-container">
-        <div id="avatar-preview" class="avatar-preview">
-          <div class="w-full h-full flex items-center justify-center text-white text-2xl font-bold" id="avatar-initials">U</div>
-        </div>
-        <div class="avatar-change-btn" id="avatar-upload-trigger">
-          <i class="fas fa-camera"></i>
-        </div>
-        <input type="file" id="avatar-upload" accept="image/*" class="hidden">
-      </div>
-      
-      <form id="account-form" class="space-y-6">
-        <div>
-          <label for="account-name" class="block text-sm font-semibold mb-3 text-left" style="color: #2d3748;">
-            <i class="fas fa-user mr-2"></i>Your Name <span class="text-red-500">*</span>
-          </label>
-          <input type="text" id="account-name" required 
-                 placeholder="Enter your full name..."
-                 class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
-                 style="border-color: #e2e8f0; color: #2d3748;">
-        </div>
-        
-        <button type="submit" class="w-full py-3 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" 
-                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-          <i class="fas fa-rocket mr-2"></i> Create Profile
-        </button>
-      </form>
+      <button id="create-account" class="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold hover:opacity-90 transition">
+        Create Profile
+      </button>
     </div>
   </div>
 
   <!-- Main App -->
-  <div id="app-wrapper" class="hidden">
+  <div id="app-wrapper">
     <!-- Live Viewers Counter -->
-    <div class="live-viewers" id="live-viewers">
+    <div class="live-viewers">
       <span class="live-dot"></span>
-      <span class="viewer-count" id="viewer-count">1</span>
+      <span id="viewer-count">1</span>
       <span>online</span>
     </div>
     
-    <!-- Scrollable Content Area -->
+    <!-- App Content -->
     <div class="app-content">
-      <div class="min-h-full w-full flex flex-col items-center justify-center py-8 px-4">
-        <div class="w-full max-w-lg">
-          <!-- Form Card -->
-          <div class="rounded-3xl p-8 shadow-2xl" style="background-color: #ffffff;">
-            <!-- User Profile -->
-            <div id="user-profile-display" class="user-profile">
-              <div class="relative">
-                <div id="current-user-avatar" class="user-profile-img">
-                  <div class="w-full h-full flex items-center justify-center text-white text-xl font-bold" id="current-user-initials">U</div>
-                </div>
-                <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
-              </div>
-              <div class="user-profile-info">
-                <div id="current-user-name" class="user-profile-name">Loading...</div>
-                <div class="user-profile-status">
-                  <i class="fas fa-circle text-green-500"></i>
-                  <span id="user-status-text">Online</span>
-                </div>
-              </div>
-              <button type="button" id="change-account-btn" class="px-4 py-2 rounded-lg font-medium text-white"
-                      style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <i class="fas fa-exchange-alt mr-2"></i> Switch
-              </button>
-            </div>
-            
-            <!-- Header -->
-            <div class="text-center mb-10">
-              <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center shadow-lg" 
-                   style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <i class="fas fa-ban text-white text-3xl"></i>
-              </div>
-              <h1 id="form-title" class="text-3xl font-bold mb-3" style="color: #2d3748;">Blocked List Chat</h1>
-              <p id="form-description" class="text-base" style="color: #718096;">Community safety warnings</p>
-            </div>
-            
-            <!-- Form -->
-            <form id="submission-form" class="space-y-6">
-              <div>
-                <label for="name-input" class="block text-sm font-semibold mb-3" style="color: #2d3748;">
-                  <i class="fas fa-user-slash mr-2"></i>Blocked Person <span class="text-red-500">*</span>
-                </label>
-                <input type="text" id="name-input" name="name" required 
-                       placeholder="Enter name of person to block..." 
-                       class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
-                       style="border-color: #e2e8f0; color: #2d3748;">
-              </div>
-              
-              <div>
-                <label for="notes-input" class="block text-sm font-semibold mb-3" style="color: #2d3748;">
-                  <i class="fas fa-sticky-note mr-2"></i>Reason / Details
-                </label>
-                <textarea id="notes-input" name="notes" rows="4" 
-                          placeholder="Why should this person be blocked?..." 
-                          class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all resize-none"
-                          style="border-color: #e2e8f0; color: #2d3748;"></textarea>
-              </div>
-              
-              <!-- Action Buttons -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button type="submit" id="submit-btn" class="w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg"
-                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                  <i class="fas fa-plus-circle mr-2"></i>
-                  <span id="submit-text">Add to List</span>
-                </button>
-                
-                <button type="button" id="view-list-btn" class="w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg"
-                        style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
-                  <i class="fas fa-comments mr-2"></i>
-                  <span id="view-text">View Chat</span>
-                </button>
-              </div>
-            </form>
-            
-            <!-- Success/Error Messages -->
-            <div id="success-message" class="hidden mt-6 p-4 rounded-xl fade-in" style="background-color: #d4edda; border-left: 4px solid #28a745;">
-              <div class="flex items-center">
-                <i class="fas fa-check-circle mr-3 text-green-500"></i>
-                <p class="font-semibold" style="color: #155724;">Added to blocked list!</p>
-              </div>
-            </div>
-            
-            <div id="error-message" class="hidden mt-6 p-4 rounded-xl fade-in" style="background-color: #f8d7da; border-left: 4px solid #dc3545;">
-              <div class="flex items-center">
-                <i class="fas fa-exclamation-circle mr-3 text-red-500"></i>
-                <p class="font-semibold" style="color: #721c24;" id="error-text">Error</p>
-              </div>
-            </div>
-            
-            <!-- Stats -->
-            <div class="mt-8 pt-6 border-t border-gray-200">
-              <div class="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div class="text-2xl font-bold" style="color: #667eea;" id="total-reports">0</div>
-                  <div class="text-xs" style="color: #718096;">Total Reports</div>
-                </div>
-                <div>
-                  <div class="text-2xl font-bold" style="color: #764ba2;" id="your-reports">0</div>
-                  <div class="text-xs" style="color: #718096;">Your Reports</div>
-                </div>
-                <div>
-                  <div class="text-2xl font-bold" style="color: #4CAF50;" id="community-size">1</div>
-                  <div class="text-xs" style="color: #718096;">Community</div>
-                </div>
-              </div>
-            </div>
+      <div class="app-card">
+        <!-- User Profile -->
+        <div id="user-profile" class="flex items-center gap-3 p-4 bg-gray-50 rounded-xl mb-6">
+          <div id="user-avatar" class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg">
+            U
+          </div>
+          <div class="flex-1">
+            <div id="user-name" class="font-semibold text-gray-800">User</div>
+            <div class="text-xs text-gray-500">Ready to report</div>
+          </div>
+          <button id="switch-account" class="text-sm text-blue-600 hover:text-blue-800">Switch</button>
+        </div>
+        
+        <!-- Title -->
+        <div class="text-center mb-8">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+            <i class="fas fa-ban text-white text-2xl"></i>
+          </div>
+          <h1 class="text-2xl font-bold text-gray-800 mb-2">Blocked List</h1>
+          <p class="text-gray-600">Community safety warnings</p>
+        </div>
+        
+        <!-- Form -->
+        <form id="submission-form" class="space-y-4 mb-6">
+          <div>
+            <label class="block text-sm font-semibold mb-2 text-gray-700">Blocked Person</label>
+            <input type="text" id="name-input" placeholder="Name of person to block" required
+                   class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
           </div>
           
-          <!-- Footer -->
-          <p class="text-center mt-6 text-sm text-white opacity-90">
-            <i class="fas fa-shield-alt mr-2"></i> Community Safety Network
-          </p>
+          <div>
+            <label class="block text-sm font-semibold mb-2 text-gray-700">Reason (Optional)</label>
+            <textarea id="notes-input" rows="3" placeholder="Why this person should be blocked"
+                      class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <button type="submit" id="submit-btn" 
+                    class="py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold hover:opacity-90 transition">
+              <i class="fas fa-plus mr-2"></i>Report
+            </button>
+            
+            <button type="button" id="view-chat-btn"
+                    class="py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold hover:opacity-90 transition">
+              <i class="fas fa-comments mr-2"></i>View Chat
+            </button>
+          </div>
+        </form>
+        
+        <!-- Success/Error Messages -->
+        <div id="success-message" class="hidden p-4 bg-green-50 border-l-4 border-green-500 rounded-r mb-4">
+          <div class="flex items-center">
+            <i class="fas fa-check-circle text-green-500 mr-3"></i>
+            <div>
+              <p class="font-semibold text-green-800">Reported successfully!</p>
+              <p class="text-sm text-green-600">The community has been warned.</p>
+            </div>
+          </div>
+        </div>
+        
+        <div id="error-message" class="hidden p-4 bg-red-50 border-l-4 border-red-500 rounded-r mb-4">
+          <div class="flex items-center">
+            <i class="fas fa-exclamation-circle text-red-500 mr-3"></i>
+            <p id="error-text" class="font-semibold text-red-800">Error</p>
+          </div>
+        </div>
+        
+        <!-- Stats -->
+        <div class="mt-auto pt-4 border-t border-gray-200">
+          <div class="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div id="total-reports" class="text-xl font-bold text-gray-800">0</div>
+              <div class="text-xs text-gray-500">Total</div>
+            </div>
+            <div>
+              <div id="your-reports" class="text-xl font-bold text-gray-800">0</div>
+              <div class="text-xs text-gray-500">Your Reports</div>
+            </div>
+            <div>
+              <div id="active-users" class="text-xl font-bold text-gray-800">1</div>
+              <div class="text-xs text-gray-500">Online</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Chat Modal -->
-  <div id="list-modal" class="modal-overlay hidden">
+  <div id="chat-modal" class="modal-overlay">
     <div class="modal-content">
-      <!-- Modal Header -->
+      <!-- Header -->
       <div class="modal-header">
-        <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-full flex items-center justify-center shadow-md" 
-               style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-            <i class="fas fa-ban text-white text-xl"></i>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+            <i class="fas fa-ban text-white"></i>
           </div>
           <div>
-            <h2 class="text-xl font-bold" style="color: #2d3748;">Blocked List Chat</h2>
-            <p class="text-sm" style="color: #718096;" id="chat-subtitle">Community warnings</p>
+            <h2 class="font-bold text-gray-800">Blocked List Chat</h2>
+            <p id="chat-subtitle" class="text-xs text-gray-500">Loading...</p>
           </div>
         </div>
-        <button id="close-modal" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100">
+        <button id="close-chat" class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center">
           <i class="fas fa-times text-gray-600"></i>
         </button>
       </div>
       
-      <!-- Chat Container - SCROLLABLE CONTENT -->
-      <div class="chat-container" id="list-body">
-        <!-- Messages will appear here -->
-      </div>
-      
-      <!-- Loading State -->
-      <div id="loading-state" class="hidden h-full flex flex-col items-center justify-center">
-        <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-4 text-gray-600">Loading chat...</p>
-      </div>
-      
-      <!-- No Data -->
-      <div id="no-data" class="hidden h-full flex flex-col items-center justify-center p-8">
-        <i class="fas fa-comment-slash text-gray-300 text-6xl mb-4"></i>
-        <h3 class="text-xl font-bold text-gray-600 mb-2">No warnings yet</h3>
-        <p class="text-gray-500 text-center mb-6">Be the first to warn the community</p>
-        <button id="close-modal-add" class="px-6 py-3 rounded-lg text-white font-medium"
-                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-          <i class="fas fa-plus-circle mr-2"></i> Add First Warning
-        </button>
-      </div>
-      
-      <!-- Error State -->
-      <div id="list-error" class="hidden h-full flex flex-col items-center justify-center p-8">
-        <i class="fas fa-exclamation-triangle text-red-500 text-6xl mb-4"></i>
-        <h3 class="text-xl font-bold text-gray-600 mb-2">Connection Error</h3>
-        <p class="text-gray-500 text-center mb-6" id="list-error-text">Failed to load chat</p>
-        <button id="retry-load" class="px-6 py-3 rounded-lg text-white font-medium"
-                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-          <i class="fas fa-redo mr-2"></i> Try Again
-        </button>
+      <!-- Chat Area -->
+      <div class="chat-area">
+        <!-- Loading -->
+        <div id="chat-loading" class="loading-state active">
+          <div class="spinner mb-4"></div>
+          <p class="text-gray-600">Loading messages...</p>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="chat-empty" class="loading-state hidden">
+          <i class="fas fa-comment-slash text-gray-300 text-4xl mb-4"></i>
+          <p class="text-gray-600 mb-2">No reports yet</p>
+          <p class="text-sm text-gray-500">Be the first to warn the community</p>
+          <button id="start-reporting" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">
+            Make First Report
+          </button>
+        </div>
+        
+        <!-- Error State -->
+        <div id="chat-error" class="loading-state hidden">
+          <i class="fas fa-exclamation-triangle text-red-400 text-4xl mb-4"></i>
+          <p class="text-gray-600 mb-2">Failed to load</p>
+          <button id="retry-chat" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">
+            Try Again
+          </button>
+        </div>
+        
+        <!-- Chat Messages -->
+        <div id="chat-container" class="chat-container hidden"></div>
       </div>
     </div>
   </div>
@@ -662,86 +557,93 @@
 
   <script>
     // ============================================
-    // REAL-TIME VIEWER COUNTER SYSTEM
+    // REAL-TIME VIEWER COUNTER
     // ============================================
     class ViewerCounter {
       constructor() {
-        this.viewers = 0;
-        this.userId = null;
-        this.isConnected = false;
-        this.lastUpdate = Date.now();
+        this.viewers = 1;
+        this.viewersData = {};
+        this.interval = null;
+        this.userId = this.generateUserId();
+        this.lastActivity = Date.now();
       }
       
-      // Generate unique user ID for this session
-      getUserId() {
-        if (!this.userId) {
-          this.userId = 'viewer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-          localStorage.setItem('viewerId', this.userId);
+      generateUserId() {
+        let id = localStorage.getItem('viewer_id');
+        if (!id) {
+          id = 'viewer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem('viewer_id', id);
         }
-        return this.userId;
+        return id;
       }
       
-      // Simple serverless viewer counter using localStorage and timestamps
-      updateViewerCount() {
+      updateActivity() {
+        this.lastActivity = Date.now();
+        this.viewersData[this.userId] = Date.now();
+        localStorage.setItem('viewers_data', JSON.stringify(this.viewersData));
+      }
+      
+      countActiveViewers() {
         try {
+          const data = localStorage.getItem('viewers_data');
+          if (!data) return 1;
+          
+          const viewers = JSON.parse(data);
           const now = Date.now();
-          const userId = this.getUserId();
-          const viewersKey = 'blockedList_viewers';
-          const viewersData = JSON.parse(localStorage.getItem(viewersKey) || '{}');
+          let activeCount = 0;
           
-          // Clean up old entries (older than 30 seconds)
-          Object.keys(viewersData).forEach(key => {
-            if (now - viewersData[key] > 30000) { // 30 seconds
-              delete viewersData[key];
+          // Clean up old entries and count active
+          for (const [id, timestamp] of Object.entries(viewers)) {
+            if (now - timestamp < 60000) { // 60 seconds
+              activeCount++;
+              this.viewersData[id] = timestamp;
             }
-          });
+          }
           
-          // Add/update current user
-          viewersData[userId] = now;
-          
-          // Save back to localStorage
-          localStorage.setItem(viewersKey, JSON.stringify(viewersData));
-          
-          // Count active viewers
-          const activeViewers = Object.keys(viewersData).length;
-          this.viewers = activeViewers;
+          // Add current user
+          this.viewersData[this.userId] = now;
+          activeCount = Math.max(activeCount, 1);
           
           // Update display
-          document.getElementById('viewer-count').textContent = activeViewers;
-          document.getElementById('community-size').textContent = activeViewers;
+          this.viewers = activeCount;
+          document.getElementById('viewer-count').textContent = activeCount;
+          document.getElementById('active-users').textContent = activeCount;
           
-          return activeViewers;
+          // Save updated data
+          localStorage.setItem('viewers_data', JSON.stringify(this.viewersData));
+          
+          return activeCount;
         } catch (error) {
-          console.error('Viewer counter error:', error);
-          return 1; // Fallback to at least 1 (current user)
+          return 1;
         }
       }
       
-      // Start updating viewer count periodically
       start() {
-        // Initial update
-        this.updateViewerCount();
+        // Initial count
+        this.countActiveViewers();
+        this.updateActivity();
         
-        // Update every 10 seconds
+        // Update every 5 seconds
         this.interval = setInterval(() => {
-          this.updateViewerCount();
-        }, 10000);
-        
-        // Update when page becomes visible
-        document.addEventListener('visibilitychange', () => {
-          if (!document.hidden) {
-            this.updateViewerCount();
-          }
-        });
+          this.countActiveViewers();
+        }, 5000);
         
         // Update on user activity
-        ['click', 'mousemove', 'keydown', 'scroll'].forEach(event => {
-          document.addEventListener(event, () => {
-            if (Date.now() - this.lastUpdate > 5000) {
-              this.updateViewerCount();
-              this.lastUpdate = Date.now();
+        ['click', 'mousemove', 'keydown'].forEach(event => {
+          window.addEventListener(event, () => {
+            if (Date.now() - this.lastActivity > 1000) {
+              this.updateActivity();
+              this.countActiveViewers();
             }
           });
+        });
+        
+        // Update when tab becomes visible
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) {
+            this.updateActivity();
+            this.countActiveViewers();
+          }
         });
       }
       
@@ -752,23 +654,19 @@
       }
     }
     
-    // Initialize viewer counter
-    const viewerCounter = new ViewerCounter();
-    
     // ============================================
-    // USER ACCOUNT SYSTEM
+    // USER ACCOUNT MANAGER
     // ============================================
-    class UserAccount {
-      static STORAGE_KEY = 'blockedListUserAccount';
+    class UserManager {
+      static STORAGE_KEY = 'blocked_user_account';
       
-      static createAccount(name, avatarData = null) {
+      static createAccount(name) {
         const account = {
-          id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12),
+          id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
           name: name.trim(),
-          avatar: avatarData, // Store actual image data
-          createdAt: new Date().toISOString(),
-          reportCount: 0,
-          lastActive: new Date().toISOString()
+          color: this.generateColor(name),
+          createdAt: Date.now(),
+          reportCount: 0
         };
         
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(account));
@@ -781,7 +679,7 @@
         
         try {
           return JSON.parse(data);
-        } catch (e) {
+        } catch (error) {
           return null;
         }
       }
@@ -790,7 +688,7 @@
         const account = this.getAccount();
         if (!account) return null;
         
-        const updated = { ...account, ...updates, lastActive: new Date().toISOString() };
+        const updated = { ...account, ...updates };
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updated));
         return updated;
       }
@@ -804,12 +702,21 @@
         return count;
       }
       
-      static getAvatarData(account) {
-        if (!account || !account.avatar) return null;
-        return account.avatar;
+      static generateColor(name) {
+        const colors = [
+          '#667eea', '#764ba2', '#f56565', '#ed8936', '#ecc94b',
+          '#48bb78', '#38b2ac', '#4299e1', '#9f7aea', '#ed64a6'
+        ];
+        
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        return colors[Math.abs(hash) % colors.length];
       }
       
-      static generateInitials(name) {
+      static getInitials(name) {
         return name
           .split(' ')
           .map(word => word[0])
@@ -817,490 +724,505 @@
           .toUpperCase()
           .slice(0, 2);
       }
-      
-      static getInitials(account) {
-        if (!account) return '?';
-        return this.generateInitials(account.name);
+    }
+    
+    // ============================================
+    // CHAT MANAGER
+    // ============================================
+    class ChatManager {
+      constructor() {
+        this.messages = [];
+        this.lastUpdate = 0;
+        this.updateInterval = null;
       }
       
-      static async processAvatarImage(file) {
-        return new Promise((resolve, reject) => {
-          if (!file.type.startsWith('image/')) {
-            reject('Please select an image file');
-            return;
+      async loadMessages() {
+        try {
+          const sheetId = '1KKB-uxdVFvRSGHex192unt9D691Zh9SwUILXtD5Q7GM';
+          const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&t=${Date.now()}`;
+          
+          const response = await fetch(csvUrl);
+          const csvText = await response.text();
+          const rows = this.parseCSV(csvText);
+          
+          if (rows.length < 2) return [];
+          
+          const headers = rows[0];
+          const nameIndex = headers.findIndex(h => h && h.toLowerCase().includes('name'));
+          const notesIndex = headers.findIndex(h => h && h.toLowerCase().includes('note'));
+          
+          const messages = [];
+          
+          for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            const name = nameIndex >= 0 ? (row[nameIndex] || '').trim() : '';
+            const notes = notesIndex >= 0 ? (row[notesIndex] || '').trim() : '';
+            
+            if (name) {
+              // Extract timestamp from notes (if any)
+              let timestamp = new Date();
+              let cleanNotes = notes;
+              
+              // Try to find timestamp in format like "2:30 PM"
+              const timeMatch = notes.match(/(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+              if (timeMatch) {
+                try {
+                  timestamp = new Date(timeMatch[0]);
+                  if (isNaN(timestamp.getTime())) {
+                    timestamp = new Date();
+                  }
+                } catch (e) {
+                  timestamp = new Date();
+                }
+              }
+              
+              messages.push({
+                name: name,
+                notes: cleanNotes,
+                timestamp: timestamp,
+                rowIndex: i
+              });
+            }
           }
           
-          if (file.size > 2 * 1024 * 1024) {
-            reject('Image must be less than 2MB');
-            return;
-          }
+          // Sort by timestamp (newest first for display)
+          messages.sort((a, b) => b.timestamp - a.timestamp);
+          this.messages = messages;
           
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-              const canvas = document.getElementById('avatar-canvas');
-              const ctx = canvas.getContext('2d');
-              
-              // Set canvas size
-              const size = 400;
-              canvas.width = size;
-              canvas.height = size;
-              
-              // Create circular mask
-              ctx.clearRect(0, 0, size, size);
-              ctx.beginPath();
-              ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
-              ctx.closePath();
-              ctx.clip();
-              
-              // Draw image
-              ctx.drawImage(img, 0, 0, size, size);
-              
-              // Get data URL
-              const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-              resolve(dataUrl);
-            };
-            img.onerror = () => reject('Failed to load image');
-            img.src = e.target.result;
-          };
-          reader.onerror = () => reject('Failed to read file');
-          reader.readAsDataURL(file);
-        });
+          return messages;
+        } catch (error) {
+          console.error('Error loading messages:', error);
+          throw error;
+        }
+      }
+      
+      parseCSV(csvText) {
+        const rows = [];
+        let row = [];
+        let cell = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < csvText.length; i++) {
+          const char = csvText[i];
+          const next = csvText[i + 1];
+          
+          if (char === '"') {
+            if (inQuotes && next === '"') {
+              cell += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (char === ',' && !inQuotes) {
+            row.push(cell);
+            cell = '';
+          } else if (char === '\n' && !inQuotes) {
+            row.push(cell);
+            rows.push(row);
+            row = [];
+            cell = '';
+          } else if (char === '\r' && next === '\n' && !inQuotes) {
+            row.push(cell);
+            rows.push(row);
+            row = [];
+            cell = '';
+            i++;
+          } else {
+            cell += char;
+          }
+        }
+        
+        if (cell || row.length) {
+          row.push(cell);
+          rows.push(row);
+        }
+        
+        return rows;
+      }
+      
+      startAutoRefresh(callback) {
+        if (this.updateInterval) {
+          clearInterval(this.updateInterval);
+        }
+        
+        this.updateInterval = setInterval(async () => {
+          try {
+            await this.loadMessages();
+            if (callback) callback(this.messages);
+          } catch (error) {
+            console.error('Auto-refresh error:', error);
+          }
+        }, 10000); // Refresh every 10 seconds
+      }
+      
+      stopAutoRefresh() {
+        if (this.updateInterval) {
+          clearInterval(this.updateInterval);
+          this.updateInterval = null;
+        }
       }
     }
     
     // ============================================
-    // APPLICATION INITIALIZATION
+    // APPLICATION
     // ============================================
-    const accountModal = document.getElementById('account-modal');
-    const appWrapper = document.getElementById('app-wrapper');
-    const avatarPreview = document.getElementById('avatar-preview');
-    const avatarUpload = document.getElementById('avatar-upload');
-    const avatarUploadTrigger = document.getElementById('avatar-upload-trigger');
-    const avatarInitials = document.getElementById('avatar-initials');
-    const accountForm = document.getElementById('account-form');
-    const currentUserAvatar = document.getElementById('current-user-avatar');
-    const currentUserInitials = document.getElementById('current-user-initials');
-    const currentUserName = document.getElementById('current-user-name');
-    const changeAccountBtn = document.getElementById('change-account-btn');
-    const submissionForm = document.getElementById('submission-form');
-    const submitBtn = document.getElementById('submit-btn');
-    const viewListBtn = document.getElementById('view-list-btn');
-    const listModal = document.getElementById('list-modal');
-    const closeModal = document.getElementById('close-modal');
-    const closeModalAdd = document.getElementById('close-modal-add');
-    const listBody = document.getElementById('list-body');
-    const loadingState = document.getElementById('loading-state');
-    const noData = document.getElementById('no-data');
-    const listError = document.getElementById('list-error');
-    const retryLoad = document.getElementById('retry-load');
-    
-    let currentUser = null;
-    let allMessages = [];
-    
-    // Initialize app
-    function initApp() {
-      const account = UserAccount.getAccount();
-      
-      if (!account) {
-        showAccountModal();
-      } else {
-        currentUser = account;
-        showMainApp();
-        viewerCounter.start(); // Start viewer counter
-      }
-    }
-    
-    function showAccountModal() {
-      accountModal.classList.remove('hidden');
-      appWrapper.classList.add('hidden');
-      document.getElementById('account-name').focus();
-    }
-    
-    function showMainApp() {
-      accountModal.classList.add('hidden');
-      appWrapper.classList.remove('hidden');
-      updateUserProfile();
-      updateStats();
-      document.getElementById('name-input').focus();
-    }
-    
-    function updateUserProfile() {
-      if (!currentUser) return;
-      
-      currentUserName.textContent = currentUser.name;
-      currentUserInitials.textContent = UserAccount.getInitials(currentUser);
-      
-      // Set avatar background color based on name hash
-      const hash = currentUser.name.split('').reduce((a, b) => {
-        a = ((a << 5) - a) + b.charCodeAt(0);
-        return a & a;
-      }, 0);
-      
-      const colors = [
-        '#667eea', '#764ba2', '#f56565', '#ed8936', '#ecc94b',
-        '#48bb78', '#38b2ac', '#4299e1', '#9f7aea', '#ed64a6'
-      ];
-      const color = colors[Math.abs(hash) % colors.length];
-      
-      currentUserAvatar.style.background = color;
-      
-      // If user has uploaded avatar, use it
-      const avatarData = UserAccount.getAvatarData(currentUser);
-      if (avatarData) {
-        currentUserAvatar.innerHTML = `<img src="${avatarData}" alt="${currentUser.name}">`;
-      }
-    }
-    
-    function updateStats() {
-      if (!currentUser) return;
-      
-      document.getElementById('your-reports').textContent = currentUser.reportCount || 0;
-      viewerCounter.updateViewerCount(); // Update viewer count
-    }
-    
-    // Avatar upload
-    avatarUploadTrigger.addEventListener('click', () => avatarUpload.click());
-    
-    avatarUpload.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      try {
-        const avatarData = await UserAccount.processAvatarImage(file);
-        avatarPreview.innerHTML = `<img src="${avatarData}" alt="Avatar">`;
-      } catch (error) {
-        alert(error);
-      }
-    });
-    
-    // Update avatar initials when name changes
-    document.getElementById('account-name').addEventListener('input', (e) => {
-      const initials = UserAccount.generateInitials(e.target.value || 'User');
-      avatarInitials.textContent = initials;
-    });
-    
-    // Account creation
-    accountForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const nameInput = document.getElementById('account-name');
-      if (!nameInput.value.trim()) {
-        alert('Please enter your name');
-        return;
+    class BlockedListApp {
+      constructor() {
+        this.user = null;
+        this.viewerCounter = new ViewerCounter();
+        this.chatManager = new ChatManager();
+        this.isChatOpen = false;
+        this.initialize();
       }
       
-      // Get avatar data from preview
-      const avatarImg = avatarPreview.querySelector('img');
-      const avatarData = avatarImg ? avatarImg.src : null;
-      
-      currentUser = UserAccount.createAccount(nameInput.value.trim(), avatarData);
-      showMainApp();
-    });
-    
-    // Change account
-    changeAccountBtn.addEventListener('click', () => {
-      if (confirm('Switch to different account?')) {
-        localStorage.removeItem(UserAccount.STORAGE_KEY);
-        showAccountModal();
-      }
-    });
-    
-    // Form submission
-    submissionForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      if (!currentUser) {
-        alert('Please create an account first');
-        return;
+      initialize() {
+        this.bindEvents();
+        this.checkAccount();
       }
       
-      const nameInput = document.getElementById('name-input');
-      const notesInput = document.getElementById('notes-input');
-      
-      if (!nameInput.value.trim()) {
-        alert('Please enter a name');
-        return;
-      }
-      
-      submitBtn.disabled = true;
-      const originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Adding...';
-      
-      try {
-        const FORM_ACTION_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfOzXT3fXroXRTYQ7J--pMWvpdJ_FPmXAvDNLS3z-UnYnti5g/formResponse';
-        const formData = new FormData();
-        formData.append('entry.714302158', nameInput.value.trim());
-        
-        // Add user info to notes
-        const timestamp = new Date().toLocaleString();
-        const fullNotes = (notesInput.value.trim() ? notesInput.value.trim() + '\n\n' : '') +
-          `👤 Reported by: ${currentUser.name} • ⏰ ${timestamp}`;
-        
-        formData.append('entry.1541466423', fullNotes);
-        
-        await fetch(FORM_ACTION_URL, {
-          method: 'POST',
-          body: formData,
-          mode: 'no-cors'
+      bindEvents() {
+        // Account creation
+        document.getElementById('create-account').addEventListener('click', () => this.createAccount());
+        document.getElementById('account-name').addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') this.createAccount();
         });
         
-        // Update user stats
-        UserAccount.incrementReportCount();
-        currentUser = UserAccount.getAccount();
-        updateStats();
+        // Switch account
+        document.getElementById('switch-account').addEventListener('click', () => this.switchAccount());
         
-        // Show success
-        document.getElementById('success-message').classList.remove('hidden');
-        document.getElementById('error-message').classList.add('hidden');
+        // Form submission
+        document.getElementById('submission-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          this.submitReport();
+        });
         
-        // Reset form
-        nameInput.value = '';
-        notesInput.value = '';
-        nameInput.focus();
+        // Chat modal
+        document.getElementById('view-chat-btn').addEventListener('click', () => this.openChat());
+        document.getElementById('close-chat').addEventListener('click', () => this.closeChat());
+        document.getElementById('start-reporting').addEventListener('click', () => this.closeChat());
+        document.getElementById('retry-chat').addEventListener('click', () => this.loadChat());
         
-        // Hide success after 3 seconds
-        setTimeout(() => {
-          document.getElementById('success-message').classList.add('hidden');
-        }, 3000);
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && this.isChatOpen) {
+            this.closeChat();
+          }
+        });
         
-      } catch (error) {
-        document.getElementById('error-text').textContent = 'Failed to submit. Please try again.';
-        document.getElementById('error-message').classList.remove('hidden');
-        document.getElementById('success-message').classList.add('hidden');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+        // Click outside to close chat
+        document.getElementById('chat-modal').addEventListener('click', (e) => {
+          if (e.target === e.currentTarget) {
+            this.closeChat();
+          }
+        });
       }
-    });
-    
-    // View chat
-    viewListBtn.addEventListener('click', async () => {
-      listModal.classList.remove('hidden');
-      await loadChat();
-    });
-    
-    // Close modal
-    closeModal.addEventListener('click', () => {
-      listModal.classList.add('hidden');
-    });
-    
-    closeModalAdd.addEventListener('click', () => {
-      listModal.classList.add('hidden');
-      document.getElementById('name-input').focus();
-    });
-    
-    // Retry loading
-    retryLoad.addEventListener('click', loadChat);
-    
-    // Load chat data
-    async function loadChat() {
-      loadingState.classList.remove('hidden');
-      listBody.classList.add('hidden');
-      noData.classList.add('hidden');
-      listError.classList.add('hidden');
       
-      try {
-        const sheetId = '1KKB-uxdVFvRSGHex192unt9D691Zh9SwUILXtD5Q7GM';
-        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+      checkAccount() {
+        this.user = UserManager.getAccount();
         
-        const response = await fetch(csvUrl);
-        const csvText = await response.text();
-        const rows = parseCSV(csvText);
+        if (!this.user) {
+          this.showAccountModal();
+        } else {
+          this.showMainApp();
+        }
+      }
+      
+      showAccountModal() {
+        document.getElementById('account-modal').classList.add('active');
+        document.getElementById('app-wrapper').style.display = 'none';
+        document.getElementById('account-name').focus();
+      }
+      
+      showMainApp() {
+        document.getElementById('account-modal').classList.remove('active');
+        document.getElementById('app-wrapper').style.display = 'flex';
+        this.updateUserProfile();
+        this.viewerCounter.start();
+        this.updateStats();
+      }
+      
+      createAccount() {
+        const nameInput = document.getElementById('account-name');
+        const name = nameInput.value.trim();
         
-        allMessages = [];
-        
-        if (rows.length <= 1) {
-          showNoData();
+        if (!name) {
+          alert('Please enter your name');
           return;
         }
         
-        // Process rows
-        const headers = rows[0];
-        const nameIndex = headers.findIndex(h => h && h.toLowerCase().includes('name'));
-        const notesIndex = headers.findIndex(h => h && h.toLowerCase().includes('note'));
-        
-        // Process all messages
-        rows.slice(1).forEach(row => {
-          const name = nameIndex >= 0 ? (row[nameIndex] || '').trim() : '';
-          let notes = notesIndex >= 0 ? (row[notesIndex] || '').trim() : '';
-          
-          if (name || notes) {
-            // Extract user info
-            let userName = 'Anonymous';
-            let timestamp = new Date();
-            
-            const reportedMatch = notes.match(/👤 Reported by:\s*(.+?) • ⏰ (.+)$/);
-            if (reportedMatch) {
-              userName = reportedMatch[1].trim();
-              notes = notes.replace(/👤 Reported by:\s*.+? • ⏰ .+$/, '').trim();
-            }
-            
-            allMessages.push({
-              name,
-              notes,
-              userName,
-              timestamp,
-              isCurrentUser: currentUser && userName === currentUser.name
-            });
-          }
-        });
-        
-        // Sort by timestamp (oldest to newest for correct display)
-        allMessages.sort((a, b) => a.timestamp - b.timestamp);
-        
-        // Display messages
-        displayMessages();
-        
-      } catch (error) {
-        console.error('Error loading chat:', error);
-        listError.classList.remove('hidden');
-        loadingState.classList.add('hidden');
-      }
-    }
-    
-    function displayMessages() {
-      listBody.innerHTML = '';
-      
-      if (allMessages.length === 0) {
-        showNoData();
-        return;
+        this.user = UserManager.createAccount(name);
+        this.showMainApp();
       }
       
-      // Update total reports count
-      document.getElementById('total-reports').textContent = allMessages.length;
-      document.getElementById('chat-subtitle').textContent = `${allMessages.length} community warnings`;
-      
-      // Display each message
-      allMessages.forEach((msg, index) => {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `chat-message ${msg.isCurrentUser ? 'sent slide-in-right' : 'slide-in-left'}`;
-        messageDiv.style.animationDelay = `${index * 0.05}s`;
-        
-        // Generate avatar
-        const initials = UserAccount.generateInitials(msg.userName);
-        const hash = msg.userName.split('').reduce((a, b) => {
-          a = ((a << 5) - a) + b.charCodeAt(0);
-          return a & a;
-        }, 0);
-        
-        const colors = [
-          '#667eea', '#764ba2', '#f56565', '#ed8936', '#ecc94b',
-          '#48bb78', '#38b2ac', '#4299e1', '#9f7aea', '#ed64a6'
-        ];
-        const color = colors[Math.abs(hash) % colors.length];
-        
-        // Time format
-        const timeString = msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const dateString = msg.timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' });
-        
-        messageDiv.innerHTML = `
-          <div class="chat-avatar" style="background: ${color}">
-            ${initials}
-          </div>
-          <div class="chat-bubble">
-            <div class="chat-sender">
-              <i class="fas fa-user"></i>
-              ${msg.userName}
-            </div>
-            
-            ${msg.name ? `
-            <div class="blocked-info">
-              <div class="blocked-label">
-                <i class="fas fa-ban"></i>
-                BLOCKED PERSON
-              </div>
-              <div class="blocked-name">${escapeHtml(msg.name)}</div>
-              ${msg.notes ? `<div class="blocked-notes">${escapeHtml(msg.notes)}</div>` : ''}
-            </div>
-            ` : msg.notes ? `<div>${escapeHtml(msg.notes)}</div>` : ''}
-            
-            <div class="chat-time">
-              <i class="far fa-clock"></i>
-              ${timeString} • ${dateString}
-            </div>
-          </div>
-        `;
-        
-        listBody.appendChild(messageDiv);
-      });
-      
-      loadingState.classList.add('hidden');
-      listBody.classList.remove('hidden');
-      
-      // Scroll to bottom to see latest messages
-      setTimeout(() => {
-        listBody.scrollTop = listBody.scrollHeight;
-      }, 100);
-    }
-    
-    function showNoData() {
-      loadingState.classList.add('hidden');
-      noData.classList.remove('hidden');
-      listBody.classList.add('hidden');
-    }
-    
-    // Helper functions
-    function parseCSV(csvText) {
-      const rows = [];
-      let row = [];
-      let cell = '';
-      let inQuotes = false;
-      
-      for (let i = 0; i < csvText.length; i++) {
-        const char = csvText[i];
-        const next = csvText[i + 1];
-        
-        if (char === '"') {
-          if (inQuotes && next === '"') {
-            cell += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-        } else if (char === ',' && !inQuotes) {
-          row.push(cell);
-          cell = '';
-        } else if (char === '\n' && !inQuotes) {
-          row.push(cell);
-          rows.push(row);
-          row = [];
-          cell = '';
-        } else if (char === '\r' && next === '\n' && !inQuotes) {
-          row.push(cell);
-          rows.push(row);
-          row = [];
-          cell = '';
-          i++;
-        } else {
-          cell += char;
+      switchAccount() {
+        if (confirm('Create a new account? Current account will be removed.')) {
+          localStorage.removeItem(UserManager.STORAGE_KEY);
+          this.user = null;
+          this.showAccountModal();
         }
       }
       
-      if (cell || row.length) {
-        row.push(cell);
-        rows.push(row);
+      updateUserProfile() {
+        if (!this.user) return;
+        
+        const initials = UserManager.getInitials(this.user.name);
+        const color = this.user.color;
+        
+        document.getElementById('user-avatar').textContent = initials;
+        document.getElementById('user-avatar').style.background = color;
+        document.getElementById('user-name').textContent = this.user.name;
+        
+        // Update your reports count
+        document.getElementById('your-reports').textContent = this.user.reportCount || 0;
       }
       
-      return rows;
-    }
-    
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-    
-    // Initialize when page loads
-    window.addEventListener('DOMContentLoaded', initApp);
-    
-    // Close modal with Escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !listModal.classList.contains('hidden')) {
-        listModal.classList.add('hidden');
+      async submitReport() {
+        if (!this.user) {
+          alert('Please create an account first');
+          return;
+        }
+        
+        const nameInput = document.getElementById('name-input');
+        const notesInput = document.getElementById('notes-input');
+        const submitBtn = document.getElementById('submit-btn');
+        
+        const blockedName = nameInput.value.trim();
+        if (!blockedName) {
+          alert('Please enter a name');
+          return;
+        }
+        
+        // Show loading
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Reporting...';
+        submitBtn.disabled = true;
+        
+        try {
+          // Format notes with timestamp (NO "Reported by")
+          const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const notes = notesInput.value.trim() + 
+            (notesInput.value.trim() ? ' • ' : '') + 
+            `⏰ ${timestamp}`;
+          
+          // Submit to Google Forms
+          const formData = new FormData();
+          formData.append('entry.714302158', blockedName);
+          formData.append('entry.1541466423', notes);
+          
+          await fetch('https://docs.google.com/forms/d/e/1FAIpQLSfOzXT3fXroXRTYQ7J--pMWvpdJ_FPmXAvDNLS3z-UnYnti5g/formResponse', {
+            method: 'POST',
+            body: formData,
+            mode: 'no-cors'
+          });
+          
+          // Update user stats
+          UserManager.incrementReportCount();
+          this.user = UserManager.getAccount();
+          this.updateUserProfile();
+          
+          // Show success
+          this.showSuccess('Report submitted successfully!');
+          
+          // Clear form
+          nameInput.value = '';
+          notesInput.value = '';
+          nameInput.focus();
+          
+          // Refresh chat if open
+          if (this.isChatOpen) {
+            await this.loadChat();
+          }
+          
+        } catch (error) {
+          console.error('Submission error:', error);
+          this.showError('Failed to submit. Please try again.');
+        } finally {
+          submitBtn.innerHTML = originalText;
+          submitBtn.disabled = false;
+        }
       }
+      
+      showSuccess(message) {
+        const successEl = document.getElementById('success-message');
+        successEl.querySelector('p').textContent = message;
+        successEl.classList.remove('hidden');
+        
+        setTimeout(() => {
+          successEl.classList.add('hidden');
+        }, 3000);
+      }
+      
+      showError(message) {
+        const errorEl = document.getElementById('error-message');
+        document.getElementById('error-text').textContent = message;
+        errorEl.classList.remove('hidden');
+        
+        setTimeout(() => {
+          errorEl.classList.add('hidden');
+        }, 5000);
+      }
+      
+      updateStats() {
+        // Update total reports
+        this.chatManager.loadMessages().then(messages => {
+          document.getElementById('total-reports').textContent = messages.length;
+        }).catch(() => {
+          document.getElementById('total-reports').textContent = '0';
+        });
+        
+        // Update online users
+        this.viewerCounter.countActiveViewers();
+      }
+      
+      async openChat() {
+        this.isChatOpen = true;
+        document.getElementById('chat-modal').classList.add('active');
+        await this.loadChat();
+        
+        // Start auto-refresh
+        this.chatManager.startAutoRefresh((messages) => {
+          this.displayChat(messages);
+        });
+      }
+      
+      closeChat() {
+        this.isChatOpen = false;
+        document.getElementById('chat-modal').classList.remove('active');
+        this.chatManager.stopAutoRefresh();
+      }
+      
+      async loadChat() {
+        const loadingEl = document.getElementById('chat-loading');
+        const emptyEl = document.getElementById('chat-empty');
+        const errorEl = document.getElementById('chat-error');
+        const chatEl = document.getElementById('chat-container');
+        
+        loadingEl.classList.add('active');
+        emptyEl.classList.add('hidden');
+        errorEl.classList.add('hidden');
+        chatEl.classList.add('hidden');
+        
+        try {
+          const messages = await this.chatManager.loadMessages();
+          
+          if (messages.length === 0) {
+            loadingEl.classList.remove('active');
+            emptyEl.classList.remove('hidden');
+          } else {
+            this.displayChat(messages);
+            loadingEl.classList.remove('active');
+            chatEl.classList.remove('hidden');
+          }
+          
+          // Update subtitle
+          document.getElementById('chat-subtitle').textContent = 
+            `${messages.length} report${messages.length !== 1 ? 's' : ''}`;
+            
+        } catch (error) {
+          console.error('Chat load error:', error);
+          loadingEl.classList.remove('active');
+          errorEl.classList.remove('hidden');
+        }
+      }
+      
+      displayChat(messages) {
+        const chatContainer = document.getElementById('chat-container');
+        const currentUser = this.user;
+        
+        chatContainer.innerHTML = '';
+        
+        // Display messages (newest at bottom)
+        messages.forEach((msg, index) => {
+          const messageEl = document.createElement('div');
+          
+          // Check if this is current user's message (based on timestamp pattern)
+          const isCurrentUser = msg.notes && msg.notes.includes('⏰');
+          
+          // Get user color based on name hash
+          const userColor = UserManager.generateColor(msg.name || 'Anonymous');
+          const userInitials = UserManager.getInitials(msg.name || 'An');
+          
+          messageEl.className = `chat-message ${isCurrentUser ? 'sent slide-in' : 'slide-in'}`;
+          messageEl.style.animationDelay = `${index * 0.05}s`;
+          
+          // Format timestamp
+          const timeString = msg.timestamp.toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+          });
+          
+          const dateString = msg.timestamp.toLocaleDateString([], {
+            month: 'short',
+            day: 'numeric'
+          });
+          
+          messageEl.innerHTML = `
+            <div class="chat-avatar" style="background: ${userColor}">
+              ${userInitials}
+            </div>
+            <div class="chat-bubble">
+              <div class="chat-sender">
+                <i class="fas fa-user"></i>
+                ${msg.name || 'Anonymous'}
+              </div>
+              
+              ${msg.notes ? `
+              <div class="text-sm mt-1">${this.escapeHtml(msg.notes)}</div>
+              ` : ''}
+              
+              <div class="chat-timestamp">
+                <i class="far fa-clock"></i>
+                ${timeString} • ${dateString}
+              </div>
+            </div>
+          `;
+          
+          chatContainer.appendChild(messageEl);
+        });
+        
+        // Scroll to bottom (newest messages)
+        setTimeout(() => {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }, 100);
+      }
+      
+      escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+    }
+    
+    // ============================================
+    // INITIALIZE APPLICATION
+    // ============================================
+    // Prevent default touch behaviors that cause scrolling
+    document.addEventListener('touchmove', (e) => {
+      if (e.target.classList.contains('chat-container') || 
+          e.target.closest('.chat-container')) {
+        return; // Allow scrolling in chat
+      }
+      e.preventDefault();
+    }, { passive: false });
+    
+    // Prevent pull-to-refresh
+    document.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      if (touch.clientY < 10) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+    
+    // Initialize app when page loads
+    window.addEventListener('DOMContentLoaded', () => {
+      window.app = new BlockedListApp();
     });
+    
+    // Force no-scroll on body at all times
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
   </script>
 </body>
 </html>
