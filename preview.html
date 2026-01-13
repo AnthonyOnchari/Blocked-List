@@ -1,1 +1,809 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Name Submission Form</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      box-sizing: border-box;
+      font-family: 'Outfit', sans-serif;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+    
+    .submit-btn:disabled,
+    .view-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 1.5rem;
+      max-width: 800px;
+      width: 100%;
+      max-height: 80vh;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    
+    /* WhatsApp Chat Styles */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .chat-message {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      max-width: 100%;
+    }
+    
+    .chat-message.sent {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+    
+    .chat-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 2px solid #e5e5ea;
+    }
+    
+    .chat-bubble {
+      padding: 12px 16px;
+      border-radius: 18px;
+      position: relative;
+      word-wrap: break-word;
+      max-width: 85%;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .chat-message:not(.sent) .chat-bubble {
+      background-color: #ffffff;
+      border: 1px solid #e5e5ea;
+      border-radius: 18px 18px 18px 4px;
+    }
+    
+    .chat-message.sent .chat-bubble {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 18px 18px 4px 18px;
+    }
+    
+    .chat-sender {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .chat-message:not(.sent) .chat-sender {
+      color: #667eea;
+    }
+    
+    .chat-message.sent .chat-sender {
+      color: rgba(255, 255, 255, 0.95);
+    }
+    
+    .chat-time {
+      font-size: 11px;
+      opacity: 0.7;
+      margin-top: 6px;
+      text-align: right;
+    }
+    
+    .blocked-info {
+      background-color: rgba(239, 68, 68, 0.1);
+      padding: 10px 12px;
+      border-radius: 12px;
+      margin-top: 8px;
+      border-left: 3px solid #dc2626;
+    }
+    
+    .blocked-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #dc2626;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .blocked-name {
+      font-weight: 600;
+      color: #7f1d1d;
+      font-size: 15px;
+    }
+    
+    .blocked-notes {
+      font-size: 14px;
+      color: #7f1d1d;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(220, 38, 38, 0.2);
+    }
+    
+    /* Form styles for submitter info */
+    .submitter-section {
+      background-color: #f8fafc;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .submitter-section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #4b5563;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+</head>
+<body class="h-full">
+  <div id="app-wrapper" class="h-full w-full overflow-auto" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="min-h-full w-full flex flex-col items-center justify-center py-12 px-4">
+      <div class="w-full max-w-lg">
+        <!-- Form Card -->
+        <div class="rounded-3xl p-8 shadow-2xl" style="background-color: #ffffff;">
+          <!-- Header -->
+          <div class="text-center mb-8">
+            <h1 id="form-title" class="text-3xl font-bold mb-3" style="color: #2d3748;">Blocked List</h1>
+            <p id="form-description" class="text-base" style="color: #718096;">Fill out the form below to add the blocked one to the list</p>
+          </div>
+          
+          <!-- Form -->
+          <form id="submission-form" class="space-y-5">
+            <!-- Submitter Info Section -->
+            <div class="submitter-section">
+              <div class="submitter-section-title">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Your Information
+              </div>
+              
+              <div class="space-y-4">
+                <div>
+                  <label for="submitter-name" class="block text-sm font-semibold mb-2" style="color: #2d3748;">
+                    Your Name <span class="text-red-500">*</span>
+                  </label>
+                  <input type="text" id="submitter-name" name="submitterName" required 
+                         placeholder="Enter your name..."
+                         class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                         style="border-color: #e2e8f0; color: #2d3748;">
+                </div>
+                
+                <div>
+                  <label for="submitter-avatar" class="block text-sm font-semibold mb-2" style="color: #2d3748;">
+                    Your Profile Picture (Initials will be used if left blank)
+                  </label>
+                  <input type="url" id="submitter-avatar" name="submitterAvatar"
+                         placeholder="https://example.com/your-photo.jpg"
+                         class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                         style="border-color: #e2e8f0; color: #2d3748;">
+                  <p class="text-xs mt-1" style="color: #718096;">Optional - Paste a direct image URL</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Blocked Person Info -->
+            <div>
+              <label for="name-input" class="block text-sm font-semibold mb-2" style="color: #2d3748;">
+                Blocked Person <span class="text-red-500">*</span>
+              </label>
+              <input type="text" id="name-input" name="name" required placeholder="Enter the name of the blocked person..." 
+                     class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all" 
+                     style="border-color: #e2e8f0; color: #2d3748;">
+            </div>
+            
+            <div>
+              <label for="notes-input" class="block text-sm font-semibold mb-2" style="color: #2d3748;">
+                Business / Notes (optional)
+              </label>
+              <textarea id="notes-input" name="notes" rows="3" placeholder="Add any additional information about why this person is blocked..." 
+                        class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all resize-none" 
+                        style="border-color: #e2e8f0; color: #2d3748;"></textarea>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button type="submit" id="submit-btn" class="submit-btn w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <span id="submit-text">Submit</span>
+              </button>
+              
+              <button type="button" id="view-list-btn" class="view-btn w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
+                <span id="view-text">View List</span>
+              </button>
+            </div>
+          </form>
+          
+          <!-- Success Message -->
+          <div id="success-message" class="hidden mt-6 p-4 rounded-xl fade-in" style="background-color: #d4edda; border-left: 4px solid #28a745;">
+            <div class="flex items-center">
+              <svg class="h-6 w-6 mr-2" style="color: #28a745;" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p class="font-semibold" style="color: #155724;">Success! Entry has been submitted.</p>
+            </div>
+          </div>
+          
+          <!-- Error Message -->
+          <div id="error-message" class="hidden mt-6 p-4 rounded-xl fade-in" style="background-color: #f8d7da; border-left: 4px solid #dc3545;">
+            <div class="flex items-center">
+              <svg class="h-6 w-6 mr-2" style="color: #dc3545;" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p class="font-semibold" style="color: #721c24;" id="error-text">Something went wrong. Please try again.</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Footer Note -->
+        <p class="text-center mt-6 text-sm text-white opacity-90"> ©2026 Slim Kanono & Tonnie </p>
+      </div>
+    </div>
+  </div>
 
+  <!-- Modal for displaying the list -->
+  <div id="list-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="p-6">
+        <!-- Modal Header -->
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold" style="color: #2d3748;">Blocked List Chat</h2>
+          <button id="close-modal" class="text-gray-500 hover:text-gray-700 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="loading-state" class="text-center py-8">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2" style="border-color: #667eea;"></div>
+          <p class="mt-2" style="color: #718096;">Loading chat...</p>
+        </div>
+        
+        <!-- List Container -->
+        <div id="list-container" class="hidden">
+          <div class="chat-container" id="list-body">
+            <!-- Chat messages will be populated here -->
+          </div>
+          
+          <!-- No Data Message -->
+          <div id="no-data" class="hidden text-center py-8">
+            <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+            <p class="text-lg" style="color: #718096;">No entries in the blocked list yet.</p>
+            <p class="text-sm mt-2" style="color: #a0aec0;">Be the first to add someone!</p>
+          </div>
+        </div>
+        
+        <!-- Error State -->
+        <div id="list-error" class="hidden text-center py-8">
+          <svg class="w-12 h-12 mx-auto mb-4" style="color: #dc3545;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="font-semibold" style="color: #721c24;" id="list-error-text">Failed to load chat</p>
+          <button id="retry-load" class="mt-4 px-6 py-2 rounded-lg font-medium transition-all hover:scale-105" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Default configuration
+    const defaultConfig = {
+      form_title: 'Blocked List',
+      form_description: 'Fill out the form below to add the blocked one to the list',
+      submit_button_text: 'Submit',
+      view_button_text: 'View List',
+      background_gradient_start: '#667eea',
+      background_gradient_end: '#764ba2',
+      card_background: '#ffffff',
+      text_color: '#2d3748',
+      secondary_text_color: '#718096',
+      button_gradient_start: '#667eea',
+      button_gradient_end: '#764ba2',
+      view_button_gradient_start: '#4CAF50',
+      view_button_gradient_end: '#45a049'
+    };
+
+    // DOM Elements
+    const formTitle = document.getElementById('form-title');
+    const formDescription = document.getElementById('form-description');
+    const submitText = document.getElementById('submit-text');
+    const viewText = document.getElementById('view-text');
+    const submissionForm = document.getElementById('submission-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const viewListBtn = document.getElementById('view-list-btn');
+    const successMessage = document.getElementById('success-message');
+    const errorMessage = document.getElementById('error-message');
+    const errorText = document.getElementById('error-text');
+    const appWrapper = document.getElementById('app-wrapper');
+    const listModal = document.getElementById('list-modal');
+    const closeModal = document.getElementById('close-modal');
+    const loadingState = document.getElementById('loading-state');
+    const listContainer = document.getElementById('list-container');
+    const listBody = document.getElementById('list-body');
+    const noData = document.getElementById('no-data');
+    const listError = document.getElementById('list-error');
+    const listErrorText = document.getElementById('list-error-text');
+    const retryLoad = document.getElementById('retry-load');
+
+    // User management functions
+    function getUserId() {
+      let userId = localStorage.getItem('blockedListUserId');
+      if (!userId) {
+        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('blockedListUserId', userId);
+      }
+      return userId;
+    }
+
+    function saveUserInfo(name, avatarUrl) {
+      localStorage.setItem('blockedListUserName', name || '');
+      localStorage.setItem('blockedListUserAvatar', avatarUrl || '');
+    }
+
+    function loadUserInfo() {
+      const savedName = localStorage.getItem('blockedListUserName');
+      const savedAvatar = localStorage.getItem('blockedListUserAvatar');
+      
+      if (savedName) {
+        document.getElementById('submitter-name').value = savedName;
+      }
+      if (savedAvatar) {
+        document.getElementById('submitter-avatar').value = savedAvatar;
+      }
+    }
+
+    function generateAvatarUrl(name) {
+      if (!name) return 'https://ui-avatars.com/api/?name=User&background=667eea&color=fff&size=100';
+      
+      const initials = name
+        .split(' ')
+        .map(word => word[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+      
+      // Generate a consistent color based on the name
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      
+      const colors = [
+        '#667eea', '#764ba2', '#f56565', '#ed8936', '#ecc94b',
+        '#48bb78', '#38b2ac', '#4299e1', '#9f7aea', '#ed64a6'
+      ];
+      const colorIndex = Math.abs(hash) % colors.length;
+      
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${colors[colorIndex].replace('#', '')}&color=fff&size=100`;
+    }
+
+    // Hide messages
+    function hideMessages() {
+      successMessage.classList.add('hidden');
+      errorMessage.classList.add('hidden');
+    }
+
+    // Show success
+    function showSuccess() {
+      hideMessages();
+      successMessage.classList.remove('hidden');
+      setTimeout(() => {
+        successMessage.classList.add('hidden');
+      }, 5000);
+    }
+
+    // Show error
+    function showError(message) {
+      hideMessages();
+      errorText.textContent = message;
+      errorMessage.classList.remove('hidden');
+    }
+
+    // Handle form submission
+    submissionForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const nameInput = document.getElementById('name-input');
+      const notesInput = document.getElementById('notes-input');
+      const submitterNameInput = document.getElementById('submitter-name');
+      const submitterAvatarInput = document.getElementById('submitter-avatar');
+      
+      // Validate required fields
+      if (!nameInput.value.trim()) {
+        showError('Please enter the name of the blocked person');
+        nameInput.focus();
+        return;
+      }
+      
+      if (!submitterNameInput.value.trim()) {
+        showError('Please enter your name');
+        submitterNameInput.focus();
+        return;
+      }
+      
+      // Save user info for future use
+      saveUserInfo(submitterNameInput.value.trim(), submitterAvatarInput.value.trim());
+      
+      // Show loading state
+      submitBtn.disabled = true;
+      submitText.textContent = 'Submitting...';
+      hideMessages();
+      
+      try {
+        // Google Form endpoint
+        const FORM_ACTION_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfOzXT3fXroXRTYQ7J--pMWvpdJ_FPmXAvDNLS3z-UnYnti5g/formResponse';
+        
+        // Create form data
+        const formData = new FormData();
+        formData.append('entry.714302158', nameInput.value.trim());  // Blocked person name
+        formData.append('entry.1541466423', notesInput.value.trim()); // Notes
+        
+        // We need to add new fields for submitter info in your Google Form
+        // For now, we'll append submitter info to notes
+        const fullNotes = notesInput.value.trim() + 
+          (notesInput.value.trim() ? '\n\n' : '') +
+          `Submitted by: ${submitterNameInput.value.trim()}`;
+        
+        formData.append('entry.1541466423', fullNotes);
+        
+        // Submit to Google Forms
+        await fetch(FORM_ACTION_URL, {
+          method: 'POST',
+          body: formData,
+          mode: 'no-cors'
+        });
+        
+        // Show success
+        showSuccess();
+        
+        // Clear only the blocked person fields
+        nameInput.value = '';
+        notesInput.value = '';
+        nameInput.focus();
+        
+      } catch (error) {
+        showError('Failed to submit. Please check your connection and try again.');
+        console.error('Submission error:', error);
+      } finally {
+        submitBtn.disabled = false;
+        const config = window.elementSdk?.config || defaultConfig;
+        submitText.textContent = config.submit_button_text || defaultConfig.submit_button_text;
+      }
+    });
+
+    // Function to fetch data from Google Sheets
+    async function fetchSheetData() {
+      try {
+        loadingState.classList.remove('hidden');
+        listContainer.classList.add('hidden');
+        noData.classList.add('hidden');
+        listError.classList.add('hidden');
+        
+        // Clear previous data
+        listBody.innerHTML = '';
+        
+        const sheetId = '1KKB-uxdVFvRSGHex192unt9D691Zh9SwUILXtD5Q7GM';
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+        
+        const response = await fetch(csvUrl);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const csvText = await response.text();
+        const rows = parseCSV(csvText);
+        
+        if (rows.length <= 1) {
+          loadingState.classList.add('hidden');
+          noData.classList.remove('hidden');
+          listContainer.classList.remove('hidden');
+          return;
+        }
+        
+        // Get headers
+        const headers = rows[0];
+        const nameIndex = headers.findIndex(h => 
+          h && (h.toLowerCase().includes('name') || h.toLowerCase().includes('blocked'))
+        );
+        
+        const notesIndex = headers.findIndex(h => 
+          h && (h.toLowerCase().includes('note') || h.toLowerCase().includes('business') || h.toLowerCase().includes('info'))
+        );
+        
+        // Process and display data
+        let hasData = false;
+        rows.slice(1).reverse().forEach((row, index) => { // Reverse to show newest first
+          const name = nameIndex >= 0 ? (row[nameIndex] || '').trim() : '';
+          let notes = notesIndex >= 0 ? (row[notesIndex] || '').trim() : '';
+          
+          if (name || notes) {
+            hasData = true;
+            
+            // Extract submitter info from notes
+            let submitterName = 'Anonymous';
+            let submitterAvatar = '';
+            
+            const submittedByMatch = notes.match(/Submitted by:\s*(.+)/);
+            if (submittedByMatch) {
+              submitterName = submittedByMatch[1].trim();
+              // Remove the "Submitted by:" part from notes
+              notes = notes.replace(/Submitted by:\s*.+/, '').trim();
+            }
+            
+            // Generate avatar URL
+            submitterAvatar = generateAvatarUrl(submitterName);
+            
+            // Create chat message
+            const entryDiv = document.createElement('div');
+            entryDiv.className = 'chat-message';
+            
+            // Alternate between left and right alignment for visual variety
+            if (index % 2 === 0) {
+              entryDiv.classList.add('sent');
+            }
+            
+            const timestamp = new Date();
+            const timeString = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            entryDiv.innerHTML = `
+              <img src="${submitterAvatar}" 
+                   alt="${submitterName}"
+                   class="chat-avatar"
+                   onerror="this.src='https://ui-avatars.com/api/?name=${submitterName.charAt(0)}&background=667eea&color=fff&size=100'">
+              
+              <div class="chat-bubble">
+                <div class="chat-sender">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  ${submitterName}
+                </div>
+                
+                ${name ? `
+                <div class="blocked-info">
+                  <div class="blocked-label">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                    BLOCKED PERSON
+                  </div>
+                  <div class="blocked-name">${name}</div>
+                  ${notes ? `<div class="blocked-notes">${notes}</div>` : ''}
+                </div>
+                ` : notes ? `<div>${notes}</div>` : ''}
+                
+                <div class="chat-time">${timeString}</div>
+              </div>
+            `;
+            
+            listBody.appendChild(entryDiv);
+          }
+        });
+        
+        if (!hasData) {
+          loadingState.classList.add('hidden');
+          noData.classList.remove('hidden');
+          listContainer.classList.remove('hidden');
+          return;
+        }
+        
+        loadingState.classList.add('hidden');
+        listContainer.classList.remove('hidden');
+        
+      } catch (error) {
+        console.error('Error fetching sheet data:', error);
+        loadingState.classList.add('hidden');
+        listErrorText.textContent = 'Failed to load chat. Please make sure the Google Sheet is published to the web.';
+        listError.classList.remove('hidden');
+      }
+    }
+
+    // Simple CSV parser
+    function parseCSV(csvText) {
+      const rows = [];
+      let currentRow = [];
+      let currentCell = '';
+      let insideQuotes = false;
+      
+      for (let i = 0; i < csvText.length; i++) {
+        const char = csvText[i];
+        const nextChar = csvText[i + 1];
+        
+        if (char === '"') {
+          if (insideQuotes && nextChar === '"') {
+            currentCell += '"';
+            i++;
+          } else {
+            insideQuotes = !insideQuotes;
+          }
+        } else if (char === ',' && !insideQuotes) {
+          currentRow.push(currentCell);
+          currentCell = '';
+        } else if (char === '\n' && !insideQuotes) {
+          currentRow.push(currentCell);
+          rows.push(currentRow);
+          currentRow = [];
+          currentCell = '';
+        } else if (char === '\r' && nextChar === '\n' && !insideQuotes) {
+          currentRow.push(currentCell);
+          rows.push(currentRow);
+          currentRow = [];
+          currentCell = '';
+          i++;
+        } else {
+          currentCell += char;
+        }
+      }
+      
+      if (currentCell !== '' || currentRow.length > 0) {
+        currentRow.push(currentCell);
+        rows.push(currentRow);
+      }
+      
+      return rows;
+    }
+
+    // Open modal and load data
+    viewListBtn.addEventListener('click', async () => {
+      listModal.classList.remove('hidden');
+      await fetchSheetData();
+    });
+
+    // Close modal
+    closeModal.addEventListener('click', () => {
+      listModal.classList.add('hidden');
+    });
+
+    // Close modal when clicking outside
+    listModal.addEventListener('click', (e) => {
+      if (e.target === listModal) {
+        listModal.classList.add('hidden');
+      }
+    });
+
+    // Retry loading data
+    retryLoad.addEventListener('click', fetchSheetData);
+
+    // Element SDK initialization
+    const elementHandler = {
+      defaultConfig,
+      onConfigChange: async (config) => {
+        formTitle.textContent = config.form_title || defaultConfig.form_title;
+        formDescription.textContent = config.form_description || defaultConfig.form_description;
+        submitText.textContent = config.submit_button_text || defaultConfig.submit_button_text;
+        viewText.textContent = config.view_button_text || defaultConfig.view_button_text;
+        
+        const bgGradStart = config.background_gradient_start || defaultConfig.background_gradient_start;
+        const bgGradEnd = config.background_gradient_end || defaultConfig.background_gradient_end;
+        const cardBg = config.card_background || defaultConfig.card_background;
+        const textColor = config.text_color || defaultConfig.text_color;
+        const secondaryText = config.secondary_text_color || defaultConfig.secondary_text_color;
+        const btnGradStart = config.button_gradient_start || defaultConfig.button_gradient_start;
+        const btnGradEnd = config.button_gradient_end || defaultConfig.button_gradient_end;
+        const viewBtnGradStart = config.view_button_gradient_start || defaultConfig.view_button_gradient_start;
+        const viewBtnGradEnd = config.view_button_gradient_end || defaultConfig.view_button_gradient_end;
+        
+        appWrapper.style.background = `linear-gradient(135deg, ${bgGradStart} 0%, ${bgGradEnd} 100%)`;
+        document.querySelector('.rounded-3xl').style.backgroundColor = cardBg;
+        
+        formTitle.style.color = textColor;
+        formDescription.style.color = secondaryText;
+        
+        document.querySelectorAll('label').forEach(el => {
+          el.style.color = textColor;
+        });
+        
+        submitBtn.style.background = `linear-gradient(135deg, ${btnGradStart} 0%, ${btnGradEnd} 100%)`;
+        viewListBtn.style.background = `linear-gradient(135deg, ${viewBtnGradStart} 0%, ${viewBtnGradEnd} 100%)`;
+        
+        document.querySelector('#list-modal h2').style.color = textColor;
+      },
+      mapToCapabilities: (config) => ({
+        recolorables: [
+          {
+            get: () => config.background_gradient_start || defaultConfig.background_gradient_start,
+            set: (value) => window.elementSdk.setConfig({ background_gradient_start: value })
+          },
+          {
+            get: () => config.card_background || defaultConfig.card_background,
+            set: (value) => window.elementSdk.setConfig({ card_background: value })
+          },
+          {
+            get: () => config.text_color || defaultConfig.text_color,
+            set: (value) => window.elementSdk.setConfig({ text_color: value })
+          },
+          {
+            get: () => config.button_gradient_start || defaultConfig.button_gradient_start,
+            set: (value) => window.elementSdk.setConfig({ button_gradient_start: value })
+          },
+          {
+            get: () => config.secondary_text_color || defaultConfig.secondary_text_color,
+            set: (value) => window.elementSdk.setConfig({ secondary_text_color: value })
+          },
+          {
+            get: () => config.view_button_gradient_start || defaultConfig.view_button_gradient_start,
+            set: (value) => window.elementSdk.setConfig({ view_button_gradient_start: value })
+          }
+        ],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+      }),
+      mapToEditPanelValues: (config) => new Map([
+        ['form_title', config.form_title || defaultConfig.form_title],
+        ['form_description', config.form_description || defaultConfig.form_description],
+        ['submit_button_text', config.submit_button_text || defaultConfig.submit_button_text],
+        ['view_button_text', config.view_button_text || defaultConfig.view_button_text]
+      ])
+    };
+
+    // Initialize Element SDK
+    if (window.elementSdk) {
+      window.elementSdk.init(elementHandler);
+    }
+
+    // Load saved user info on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadUserInfo();
+      document.getElementById('name-input').focus();
+    });
+  </script>
+</body>
+</html>
