@@ -6,6 +6,9 @@
   <title>Blocked List Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/_sdk/element_sdk.js"></script>
+  <!-- Firebase for real-time viewer count -->
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -15,40 +18,33 @@
       box-sizing: border-box;
     }
     
-    body {
-      font-family: 'Outfit', sans-serif;
+    html, body {
       height: 100%;
+      width: 100%;
       overflow: hidden;
+      font-family: 'Outfit', sans-serif;
+    }
+    
+    /* Prevent scrolling on body */
+    body {
+      position: fixed;
+      width: 100%;
+      height: 100%;
     }
     
     @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     
-    .fade-in {
-      animation: fadeIn 0.3s ease-out forwards;
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(30px); }
+      to { opacity: 1; transform: translateX(0); }
     }
     
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateX(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-    
-    .slide-in {
-      animation: slideIn 0.3s ease-out forwards;
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-30px); }
+      to { opacity: 1; transform: translateX(0); }
     }
     
     @keyframes pulse {
@@ -56,45 +52,88 @@
       50% { opacity: 0.5; }
     }
     
-    .pulse {
-      animation: pulse 2s infinite;
+    .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+    .slide-in-right { animation: slideInRight 0.3s ease-out forwards; }
+    .slide-in-left { animation: slideInLeft 0.3s ease-out forwards; }
+    .pulse { animation: pulse 2s infinite; }
+    
+    /* Main app - FIXED NO SCROLL */
+    #app-wrapper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
     
-    .submit-btn:disabled,
-    .view-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+    /* Scrollable content area INSIDE app */
+    .app-content {
+      height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     
-    /* Modal styles */
+    /* Custom scrollbar */
+    .app-content::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .app-content::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+    
+    .app-content::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 10px;
+    }
+    
+    .app-content::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+    
+    /* Chat modal */
     .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
-      background-color: rgba(0, 0, 0, 0.7);
+      background-color: rgba(0, 0, 0, 0.9);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 2000;
-      padding: 20px;
-      backdrop-filter: blur(5px);
+      padding: 0;
+      backdrop-filter: blur(10px);
     }
     
     .modal-content {
       background: white;
-      border-radius: 20px;
-      max-width: 800px;
       width: 100%;
-      height: 85vh;
-      overflow: hidden;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+      height: 100%;
       display: flex;
       flex-direction: column;
+      box-shadow: none;
     }
     
-    /* WhatsApp Chat Styles */
+    /* Modal header - fixed top */
+    .modal-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid #e5e5ea;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    /* Chat container - scrollable */
     .chat-container {
       display: flex;
       flex-direction: column;
@@ -102,9 +141,10 @@
       padding: 20px;
       overflow-y: auto;
       flex: 1;
+      min-height: 0; /* Important for flex scroll */
     }
     
-    /* Custom scrollbar for chat */
+    /* Chat scrollbar */
     .chat-container::-webkit-scrollbar {
       width: 6px;
     }
@@ -123,10 +163,11 @@
       background: #a1a1a1;
     }
     
+    /* Chat message styles */
     .chat-message {
       display: flex;
       align-items: flex-start;
-      gap: 10px;
+      gap: 12px;
       max-width: 100%;
     }
     
@@ -135,14 +176,28 @@
       flex-direction: row-reverse;
     }
     
+    /* PROFILE PICTURES - FIXED to show actual images */
     .chat-avatar {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       object-fit: cover;
       flex-shrink: 0;
       border: 3px solid;
-      transition: all 0.3s ease;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      overflow: hidden;
+    }
+    
+    .chat-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     
     .chat-message:not(.sent) .chat-avatar {
@@ -150,11 +205,7 @@
     }
     
     .chat-message.sent .chat-avatar {
-      border-color: rgba(102, 126, 234, 0.3);
-    }
-    
-    .chat-avatar:hover {
-      transform: scale(1.05);
+      border-color: rgba(102, 126, 234, 0.4);
     }
     
     .chat-bubble {
@@ -163,8 +214,7 @@
       position: relative;
       word-wrap: break-word;
       max-width: 75%;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     
     .chat-message:not(.sent) .chat-bubble {
@@ -177,10 +227,6 @@
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       border-radius: 20px 20px 5px 20px;
-    }
-    
-    .chat-bubble:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
     
     .chat-sender {
@@ -202,7 +248,7 @@
     
     .chat-time {
       font-size: 11px;
-      opacity: 0.7;
+      opacity: 0.8;
       margin-top: 8px;
       text-align: right;
       display: flex;
@@ -217,9 +263,6 @@
       border-radius: 14px;
       margin-top: 10px;
       border-left: 4px solid #dc2626;
-      border-right: 1px solid rgba(220, 38, 38, 0.1);
-      border-top: 1px solid rgba(220, 38, 38, 0.1);
-      border-bottom: 1px solid rgba(220, 38, 38, 0.1);
     }
     
     .blocked-label {
@@ -230,15 +273,12 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
     
     .blocked-name {
       font-weight: 700;
       color: #7f1d1d;
       font-size: 16px;
-      margin-bottom: 4px;
     }
     
     .blocked-notes {
@@ -247,10 +287,9 @@
       margin-top: 8px;
       padding-top: 8px;
       border-top: 1px solid rgba(220, 38, 38, 0.2);
-      line-height: 1.5;
     }
     
-    /* Account Modal Styles */
+    /* Account modal */
     .account-modal {
       position: fixed;
       top: 0;
@@ -271,20 +310,8 @@
       max-width: 440px;
       width: 100%;
       padding: 40px;
-      box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
       text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .account-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 6px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
     
     .avatar-preview-container {
@@ -301,13 +328,7 @@
       object-fit: cover;
       border: 5px solid #667eea;
       cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-    }
-    
-    .avatar-preview:hover {
-      transform: scale(1.05);
-      box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
     
     .avatar-change-btn {
@@ -324,13 +345,6 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    }
-    
-    .avatar-change-btn:hover {
-      background: #764ba2;
-      transform: scale(1.1);
     }
     
     /* User profile in form */
@@ -339,17 +353,10 @@
       align-items: center;
       gap: 15px;
       padding: 16px;
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+      background: rgba(102, 126, 234, 0.08);
       border-radius: 16px;
       margin-bottom: 24px;
       border: 2px solid rgba(102, 126, 234, 0.2);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
-      transition: all 0.3s ease;
-    }
-    
-    .user-profile:hover {
-      border-color: rgba(102, 126, 234, 0.4);
-      box-shadow: 0 6px 18px rgba(102, 126, 234, 0.15);
     }
     
     .user-profile-img {
@@ -358,12 +365,6 @@
       border-radius: 50%;
       object-fit: cover;
       border: 3px solid #667eea;
-      box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
-      transition: all 0.3s ease;
-    }
-    
-    .user-profile-img:hover {
-      transform: scale(1.05);
     }
     
     .user-profile-info {
@@ -386,205 +387,54 @@
       gap: 5px;
     }
     
-    .user-profile-status i {
-      color: #48bb78;
-    }
-    
-    .change-account-btn {
-      padding: 10px 18px;
-      font-size: 13px;
-      font-weight: 600;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* Live viewers indicator */
+    .live-viewers {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.7);
       color: white;
-      border: none;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-      white-space: nowrap;
-    }
-    
-    .change-account-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 18px rgba(102, 126, 234, 0.4);
-    }
-    
-    /* Form input styles */
-    .form-input, .form-textarea {
-      width: 100%;
-      padding: 16px 20px;
-      border-radius: 14px;
-      border: 2px solid #e2e8f0;
-      font-size: 16px;
-      color: #2d3748;
-      transition: all 0.3s ease;
-      background: white;
-    }
-    
-    .form-input:focus, .form-textarea:focus {
-      outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-      transform: translateY(-1px);
-    }
-    
-    .form-input::placeholder, .form-textarea::placeholder {
-      color: #a0aec0;
-    }
-    
-    /* Button styles */
-    .gradient-btn {
-      padding: 18px 24px;
-      border-radius: 16px;
-      font-weight: 700;
-      font-size: 17px;
-      color: white;
-      border: none;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 10px;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
     
-    .gradient-btn:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-    }
-    
-    .gradient-btn:active {
-      transform: translateY(-1px);
-    }
-    
-    .gradient-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none !important;
-    }
-    
-    /* Success/Error messages */
-    .alert-message {
-      padding: 16px 20px;
-      border-radius: 14px;
-      margin-top: 20px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-weight: 600;
-    }
-    
-    .alert-success {
-      background-color: #d4edda;
-      border-left: 5px solid #28a745;
-      color: #155724;
-    }
-    
-    .alert-error {
-      background-color: #f8d7da;
-      border-left: 5px solid #dc3545;
-      color: #721c24;
-    }
-    
-    /* Modal header */
-    .modal-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid #e5e5ea;
-      background: white;
-      border-radius: 20px 20px 0 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
-    
-    .modal-header h2 {
-      font-size: 24px;
-      font-weight: 700;
-      color: #2d3748;
-    }
-    
-    .close-btn {
-      width: 40px;
-      height: 40px;
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: #ff4757;
       border-radius: 50%;
-      background: #f7fafc;
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      color: #4a5568;
+      animation: pulse 1.5s infinite;
     }
     
-    .close-btn:hover {
-      background: #edf2f7;
-      transform: rotate(90deg);
-      color: #2d3748;
+    .viewer-count {
+      font-weight: bold;
     }
     
-    /* Loading spinner */
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 4px solid rgba(102, 126, 234, 0.2);
-      border-top: 4px solid #667eea;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
-    }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    /* Empty state */
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-    }
-    
-    .empty-state-icon {
-      font-size: 80px;
-      color: #e2e8f0;
-      margin-bottom: 20px;
-    }
-    
-    /* Responsive adjustments */
+    /* Responsive */
     @media (max-width: 640px) {
       .modal-content {
-        height: 90vh;
-        border-radius: 16px;
+        border-radius: 0;
       }
       
       .account-card {
-        padding: 30px 24px;
+        padding: 30px 20px;
       }
       
-      .gradient-btn {
-        padding: 16px 20px;
-        font-size: 16px;
+      .live-viewers {
+        top: 10px;
+        right: 10px;
+        padding: 6px 12px;
+        font-size: 12px;
       }
-      
-      .user-profile {
-        padding: 14px;
-      }
-      
-      .user-profile-img {
-        width: 50px;
-        height: 50px;
-      }
-    }
-    
-    /* Fix for avatar persistence */
-    .avatar-storage {
-      display: none;
     }
   </style>
-  <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
 </head>
 <body class="h-full">
@@ -596,17 +446,16 @@
         <p class="text-sm" style="color: #718096;">Set up once, then start contributing to the community</p>
       </div>
       
-      <!-- Avatar Preview -->
       <div class="avatar-preview-container">
-        <img id="avatar-preview" src="https://ui-avatars.com/api/?name=User&background=667eea&color=fff&size=240" 
-             alt="Profile Preview" class="avatar-preview">
+        <div id="avatar-preview" class="avatar-preview">
+          <div class="w-full h-full flex items-center justify-center text-white text-2xl font-bold" id="avatar-initials">U</div>
+        </div>
         <div class="avatar-change-btn" id="avatar-upload-trigger">
           <i class="fas fa-camera"></i>
         </div>
         <input type="file" id="avatar-upload" accept="image/*" class="hidden">
       </div>
       
-      <!-- Account Form -->
       <form id="account-form" class="space-y-6">
         <div>
           <label for="account-name" class="block text-sm font-semibold mb-3 text-left" style="color: #2d3748;">
@@ -614,144 +463,141 @@
           </label>
           <input type="text" id="account-name" required 
                  placeholder="Enter your full name..."
-                 class="form-input">
+                 class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                 style="border-color: #e2e8f0; color: #2d3748;">
         </div>
         
-        <div>
-          <label for="account-username" class="block text-sm font-semibold mb-3 text-left" style="color: #2d3748;">
-            <i class="fas fa-at mr-2"></i>Username
-          </label>
-          <input type="text" id="account-username" 
-                 placeholder="@username (optional)"
-                 class="form-input">
-          <p class="text-xs mt-2 text-left" style="color: #718096;">This will be your display name in the chat</p>
-        </div>
-        
-        <button type="submit" class="gradient-btn w-full" 
+        <button type="submit" class="w-full py-3 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" 
                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-          <i class="fas fa-rocket"></i> Create Profile & Continue
+          <i class="fas fa-rocket mr-2"></i> Create Profile
         </button>
       </form>
-      
-      <p class="text-xs mt-6" style="color: #a0aec0;">
-        <i class="fas fa-lock mr-1"></i> Your profile is saved locally on this device
-      </p>
     </div>
   </div>
 
   <!-- Main App -->
-  <div id="app-wrapper" class="h-full w-full overflow-auto hidden" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-    <div class="min-h-full w-full flex flex-col items-center justify-center py-8 px-4">
-      <div class="w-full max-w-lg">
-        <!-- Form Card -->
-        <div class="rounded-3xl p-8 shadow-2xl" style="background-color: #ffffff;">
-          <!-- User Profile Display -->
-          <div id="user-profile-display" class="user-profile">
-            <div class="relative">
-              <img id="current-user-avatar" class="user-profile-img" 
-                   src="https://ui-avatars.com/api/?name=User&background=667eea&color=fff&size=200" 
-                   alt="Your Avatar">
-              <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
-            </div>
-            <div class="user-profile-info">
-              <div id="current-user-name" class="user-profile-name">Loading...</div>
-              <div class="user-profile-status">
-                <i class="fas fa-circle"></i>
-                <span id="user-status-text">Ready to add to blocked list</span>
+  <div id="app-wrapper" class="hidden">
+    <!-- Live Viewers Counter -->
+    <div class="live-viewers" id="live-viewers">
+      <span class="live-dot"></span>
+      <span class="viewer-count" id="viewer-count">1</span>
+      <span>online</span>
+    </div>
+    
+    <!-- Scrollable Content Area -->
+    <div class="app-content">
+      <div class="min-h-full w-full flex flex-col items-center justify-center py-8 px-4">
+        <div class="w-full max-w-lg">
+          <!-- Form Card -->
+          <div class="rounded-3xl p-8 shadow-2xl" style="background-color: #ffffff;">
+            <!-- User Profile -->
+            <div id="user-profile-display" class="user-profile">
+              <div class="relative">
+                <div id="current-user-avatar" class="user-profile-img">
+                  <div class="w-full h-full flex items-center justify-center text-white text-xl font-bold" id="current-user-initials">U</div>
+                </div>
+                <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
               </div>
-            </div>
-            <button type="button" id="change-account-btn" class="change-account-btn">
-              <i class="fas fa-exchange-alt mr-2"></i> Switch
-            </button>
-          </div>
-          
-          <!-- Header -->
-          <div class="text-center mb-10">
-            <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center shadow-lg" 
-                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-              <i class="fas fa-ban text-white text-3xl"></i>
-            </div>
-            <h1 id="form-title" class="text-3xl font-bold mb-3" style="color: #2d3748;">Blocked List Chat</h1>
-            <p id="form-description" class="text-base" style="color: #718096;">Community warnings & safety alerts</p>
-          </div>
-          
-          <!-- Form -->
-          <form id="submission-form" class="space-y-6">
-            <!-- Blocked Person Info -->
-            <div>
-              <label for="name-input" class="block text-sm font-semibold mb-3" style="color: #2d3748;">
-                <i class="fas fa-user-slash mr-2"></i>Blocked Person <span class="text-red-500">*</span>
-              </label>
-              <input type="text" id="name-input" name="name" required 
-                     placeholder="Enter name of person to block..." 
-                     class="form-input">
-            </div>
-            
-            <div>
-              <label for="notes-input" class="block text-sm font-semibold mb-3" style="color: #2d3748;">
-                <i class="fas fa-sticky-note mr-2"></i>Reason / Details (optional)
-              </label>
-              <textarea id="notes-input" name="notes" rows="4" 
-                        placeholder="Why should this person be blocked? Provide details..." 
-                        class="form-textarea"></textarea>
-            </div>
-            
-            <!-- Action Buttons -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button type="submit" id="submit-btn" class="gradient-btn submit-btn" 
+              <div class="user-profile-info">
+                <div id="current-user-name" class="user-profile-name">Loading...</div>
+                <div class="user-profile-status">
+                  <i class="fas fa-circle text-green-500"></i>
+                  <span id="user-status-text">Online</span>
+                </div>
+              </div>
+              <button type="button" id="change-account-btn" class="px-4 py-2 rounded-lg font-medium text-white"
                       style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <i class="fas fa-plus-circle"></i>
-                <span id="submit-text">Add to List</span>
+                <i class="fas fa-exchange-alt mr-2"></i> Switch
               </button>
+            </div>
+            
+            <!-- Header -->
+            <div class="text-center mb-10">
+              <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center shadow-lg" 
+                   style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <i class="fas fa-ban text-white text-3xl"></i>
+              </div>
+              <h1 id="form-title" class="text-3xl font-bold mb-3" style="color: #2d3748;">Blocked List Chat</h1>
+              <p id="form-description" class="text-base" style="color: #718096;">Community safety warnings</p>
+            </div>
+            
+            <!-- Form -->
+            <form id="submission-form" class="space-y-6">
+              <div>
+                <label for="name-input" class="block text-sm font-semibold mb-3" style="color: #2d3748;">
+                  <i class="fas fa-user-slash mr-2"></i>Blocked Person <span class="text-red-500">*</span>
+                </label>
+                <input type="text" id="name-input" name="name" required 
+                       placeholder="Enter name of person to block..." 
+                       class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                       style="border-color: #e2e8f0; color: #2d3748;">
+              </div>
               
-              <button type="button" id="view-list-btn" class="gradient-btn view-btn" 
-                      style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
-                <i class="fas fa-comments"></i>
-                <span id="view-text">View Chat</span>
-              </button>
+              <div>
+                <label for="notes-input" class="block text-sm font-semibold mb-3" style="color: #2d3748;">
+                  <i class="fas fa-sticky-note mr-2"></i>Reason / Details
+                </label>
+                <textarea id="notes-input" name="notes" rows="4" 
+                          placeholder="Why should this person be blocked?..." 
+                          class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all resize-none"
+                          style="border-color: #e2e8f0; color: #2d3748;"></textarea>
+              </div>
+              
+              <!-- Action Buttons -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button type="submit" id="submit-btn" class="w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg"
+                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                  <i class="fas fa-plus-circle mr-2"></i>
+                  <span id="submit-text">Add to List</span>
+                </button>
+                
+                <button type="button" id="view-list-btn" class="w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg"
+                        style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
+                  <i class="fas fa-comments mr-2"></i>
+                  <span id="view-text">View Chat</span>
+                </button>
+              </div>
+            </form>
+            
+            <!-- Success/Error Messages -->
+            <div id="success-message" class="hidden mt-6 p-4 rounded-xl fade-in" style="background-color: #d4edda; border-left: 4px solid #28a745;">
+              <div class="flex items-center">
+                <i class="fas fa-check-circle mr-3 text-green-500"></i>
+                <p class="font-semibold" style="color: #155724;">Added to blocked list!</p>
+              </div>
             </div>
-          </form>
-          
-          <!-- Success Message -->
-          <div id="success-message" class="alert-message alert-success hidden fade-in">
-            <i class="fas fa-check-circle text-xl"></i>
-            <div>
-              <p class="font-semibold">Successfully added to blocked list!</p>
-              <p class="text-sm mt-1">The community has been warned.</p>
+            
+            <div id="error-message" class="hidden mt-6 p-4 rounded-xl fade-in" style="background-color: #f8d7da; border-left: 4px solid #dc3545;">
+              <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-3 text-red-500"></i>
+                <p class="font-semibold" style="color: #721c24;" id="error-text">Error</p>
+              </div>
+            </div>
+            
+            <!-- Stats -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+              <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div class="text-2xl font-bold" style="color: #667eea;" id="total-reports">0</div>
+                  <div class="text-xs" style="color: #718096;">Total Reports</div>
+                </div>
+                <div>
+                  <div class="text-2xl font-bold" style="color: #764ba2;" id="your-reports">0</div>
+                  <div class="text-xs" style="color: #718096;">Your Reports</div>
+                </div>
+                <div>
+                  <div class="text-2xl font-bold" style="color: #4CAF50;" id="community-size">1</div>
+                  <div class="text-xs" style="color: #718096;">Community</div>
+                </div>
+              </div>
             </div>
           </div>
           
-          <!-- Error Message -->
-          <div id="error-message" class="alert-message alert-error hidden fade-in">
-            <i class="fas fa-exclamation-circle text-xl"></i>
-            <div>
-              <p class="font-semibold" id="error-text">Something went wrong. Please try again.</p>
-            </div>
-          </div>
-          
-          <!-- Stats -->
-          <div class="mt-8 pt-6 border-t border-gray-200">
-            <div class="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div class="text-2xl font-bold" style="color: #667eea;" id="total-reports">0</div>
-                <div class="text-xs" style="color: #718096;">Total Reports</div>
-              </div>
-              <div>
-                <div class="text-2xl font-bold" style="color: #764ba2;" id="your-reports">0</div>
-                <div class="text-xs" style="color: #718096;">Your Reports</div>
-              </div>
-              <div>
-                <div class="text-2xl font-bold" style="color: #4CAF50;" id="active-users">1</div>
-                <div class="text-xs" style="color: #718096;">Active Now</div>
-              </div>
-            </div>
-          </div>
+          <!-- Footer -->
+          <p class="text-center mt-6 text-sm text-white opacity-90">
+            <i class="fas fa-shield-alt mr-2"></i> Community Safety Network
+          </p>
         </div>
-        
-        <!-- Footer Note -->
-        <p class="text-center mt-6 text-sm text-white opacity-90">
-          <i class="fas fa-shield-alt mr-2"></i> ©2026 Community Safety Network
-        </p>
       </div>
     </div>
   </div>
@@ -767,86 +613,165 @@
             <i class="fas fa-ban text-white text-xl"></i>
           </div>
           <div>
-            <h2>Blocked List Chat</h2>
+            <h2 class="text-xl font-bold" style="color: #2d3748;">Blocked List Chat</h2>
             <p class="text-sm" style="color: #718096;" id="chat-subtitle">Community warnings</p>
           </div>
         </div>
-        <button id="close-modal" class="close-btn">
-          <i class="fas fa-times"></i>
+        <button id="close-modal" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100">
+          <i class="fas fa-times text-gray-600"></i>
         </button>
       </div>
       
-      <!-- Chat Content Area -->
-      <div class="flex-1 overflow-hidden">
-        <!-- Loading State -->
-        <div id="loading-state" class="h-full flex flex-col items-center justify-center">
-          <div class="spinner"></div>
-          <p class="mt-4 text-lg" style="color: #718096;">Loading chat messages...</p>
-          <p class="text-sm mt-2" style="color: #a0aec0;">Fetching community warnings</p>
-        </div>
-        
-        <!-- Chat Container -->
-        <div id="list-container" class="h-full hidden flex flex-col">
-          <div class="chat-container" id="list-body">
-            <!-- Chat messages will be populated here -->
-          </div>
-          
-          <!-- No Data Message -->
-          <div id="no-data" class="empty-state hidden">
-            <div class="empty-state-icon">
-              <i class="fas fa-comment-slash"></i>
-            </div>
-            <h3 class="text-xl font-bold mb-2" style="color: #4a5568;">No warnings yet</h3>
-            <p class="text-sm mb-6" style="color: #718096;">Be the first to warn the community</p>
-            <button id="close-modal-add" class="gradient-btn" 
-                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-              <i class="fas fa-plus-circle mr-2"></i> Add First Warning
-            </button>
-          </div>
-        </div>
-        
-        <!-- Error State -->
-        <div id="list-error" class="empty-state hidden">
-          <div class="empty-state-icon" style="color: #f56565;">
-            <i class="fas fa-exclamation-triangle"></i>
-          </div>
-          <h3 class="text-xl font-bold mb-2" style="color: #4a5568;">Failed to load chat</h3>
-          <p class="text-sm mb-6" style="color: #718096;" id="list-error-text">Please check your connection</p>
-          <button id="retry-load" class="gradient-btn" 
-                  style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-            <i class="fas fa-redo mr-2"></i> Try Again
-          </button>
-        </div>
+      <!-- Chat Container - SCROLLABLE CONTENT -->
+      <div class="chat-container" id="list-body">
+        <!-- Messages will appear here -->
+      </div>
+      
+      <!-- Loading State -->
+      <div id="loading-state" class="hidden h-full flex flex-col items-center justify-center">
+        <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="mt-4 text-gray-600">Loading chat...</p>
+      </div>
+      
+      <!-- No Data -->
+      <div id="no-data" class="hidden h-full flex flex-col items-center justify-center p-8">
+        <i class="fas fa-comment-slash text-gray-300 text-6xl mb-4"></i>
+        <h3 class="text-xl font-bold text-gray-600 mb-2">No warnings yet</h3>
+        <p class="text-gray-500 text-center mb-6">Be the first to warn the community</p>
+        <button id="close-modal-add" class="px-6 py-3 rounded-lg text-white font-medium"
+                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+          <i class="fas fa-plus-circle mr-2"></i> Add First Warning
+        </button>
+      </div>
+      
+      <!-- Error State -->
+      <div id="list-error" class="hidden h-full flex flex-col items-center justify-center p-8">
+        <i class="fas fa-exclamation-triangle text-red-500 text-6xl mb-4"></i>
+        <h3 class="text-xl font-bold text-gray-600 mb-2">Connection Error</h3>
+        <p class="text-gray-500 text-center mb-6" id="list-error-text">Failed to load chat</p>
+        <button id="retry-load" class="px-6 py-3 rounded-lg text-white font-medium"
+                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+          <i class="fas fa-redo mr-2"></i> Try Again
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- Hidden canvas for image processing -->
-  <canvas id="avatar-canvas" class="hidden" width="400" height="400"></canvas>
+  <!-- Hidden canvas for avatars -->
+  <canvas id="avatar-canvas" class="hidden"></canvas>
 
   <script>
-    // Enhanced Account Management System
-    class UserAccount {
-      static STORAGE_KEY = 'blockedListUserAccount_v2';
-      static AVATAR_STORAGE_KEY = 'blockedListUserAvatar_v2';
+    // ============================================
+    // REAL-TIME VIEWER COUNTER SYSTEM
+    // ============================================
+    class ViewerCounter {
+      constructor() {
+        this.viewers = 0;
+        this.userId = null;
+        this.isConnected = false;
+        this.lastUpdate = Date.now();
+      }
       
-      static createAccount(name, username = '', avatarData = '') {
+      // Generate unique user ID for this session
+      getUserId() {
+        if (!this.userId) {
+          this.userId = 'viewer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem('viewerId', this.userId);
+        }
+        return this.userId;
+      }
+      
+      // Simple serverless viewer counter using localStorage and timestamps
+      updateViewerCount() {
+        try {
+          const now = Date.now();
+          const userId = this.getUserId();
+          const viewersKey = 'blockedList_viewers';
+          const viewersData = JSON.parse(localStorage.getItem(viewersKey) || '{}');
+          
+          // Clean up old entries (older than 30 seconds)
+          Object.keys(viewersData).forEach(key => {
+            if (now - viewersData[key] > 30000) { // 30 seconds
+              delete viewersData[key];
+            }
+          });
+          
+          // Add/update current user
+          viewersData[userId] = now;
+          
+          // Save back to localStorage
+          localStorage.setItem(viewersKey, JSON.stringify(viewersData));
+          
+          // Count active viewers
+          const activeViewers = Object.keys(viewersData).length;
+          this.viewers = activeViewers;
+          
+          // Update display
+          document.getElementById('viewer-count').textContent = activeViewers;
+          document.getElementById('community-size').textContent = activeViewers;
+          
+          return activeViewers;
+        } catch (error) {
+          console.error('Viewer counter error:', error);
+          return 1; // Fallback to at least 1 (current user)
+        }
+      }
+      
+      // Start updating viewer count periodically
+      start() {
+        // Initial update
+        this.updateViewerCount();
+        
+        // Update every 10 seconds
+        this.interval = setInterval(() => {
+          this.updateViewerCount();
+        }, 10000);
+        
+        // Update when page becomes visible
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) {
+            this.updateViewerCount();
+          }
+        });
+        
+        // Update on user activity
+        ['click', 'mousemove', 'keydown', 'scroll'].forEach(event => {
+          document.addEventListener(event, () => {
+            if (Date.now() - this.lastUpdate > 5000) {
+              this.updateViewerCount();
+              this.lastUpdate = Date.now();
+            }
+          });
+        });
+      }
+      
+      stop() {
+        if (this.interval) {
+          clearInterval(this.interval);
+        }
+      }
+    }
+    
+    // Initialize viewer counter
+    const viewerCounter = new ViewerCounter();
+    
+    // ============================================
+    // USER ACCOUNT SYSTEM
+    // ============================================
+    class UserAccount {
+      static STORAGE_KEY = 'blockedListUserAccount';
+      
+      static createAccount(name, avatarData = null) {
         const account = {
           id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12),
           name: name.trim(),
-          username: username.trim().replace(/^@/, ''),
+          avatar: avatarData, // Store actual image data
           createdAt: new Date().toISOString(),
-          lastActive: new Date().toISOString(),
-          reportCount: 0
+          reportCount: 0,
+          lastActive: new Date().toISOString()
         };
         
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(account));
-        
-        // Store avatar separately for better persistence
-        if (avatarData && avatarData.startsWith('data:image')) {
-          localStorage.setItem(this.AVATAR_STORAGE_KEY, avatarData);
-        }
-        
         return account;
       }
       
@@ -857,395 +782,237 @@
         try {
           return JSON.parse(data);
         } catch (e) {
-          localStorage.removeItem(this.STORAGE_KEY);
           return null;
         }
-      }
-      
-      static getAvatar() {
-        return localStorage.getItem(this.AVATAR_STORAGE_KEY) || null;
       }
       
       static updateAccount(updates) {
         const account = this.getAccount();
         if (!account) return null;
         
-        const updatedAccount = { 
-          ...account, 
-          ...updates, 
-          lastActive: new Date().toISOString() 
-        };
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAccount));
-        return updatedAccount;
+        const updated = { ...account, ...updates, lastActive: new Date().toISOString() };
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updated));
+        return updated;
       }
       
       static incrementReportCount() {
         const account = this.getAccount();
         if (!account) return 0;
         
-        const newCount = (account.reportCount || 0) + 1;
-        this.updateAccount({ reportCount: newCount });
-        return newCount;
+        const count = (account.reportCount || 0) + 1;
+        this.updateAccount({ reportCount: count });
+        return count;
       }
       
-      static deleteAccount() {
-        localStorage.removeItem(this.STORAGE_KEY);
-        localStorage.removeItem(this.AVATAR_STORAGE_KEY);
+      static getAvatarData(account) {
+        if (!account || !account.avatar) return null;
+        return account.avatar;
       }
       
-      static getDisplayName(account) {
-        if (!account) return 'Anonymous';
-        if (account.username) return `@${account.username}`;
-        return account.name;
-      }
-      
-      static getAvatarUrl(account) {
-        // First try to get stored avatar
-        const storedAvatar = this.getAvatar();
-        if (storedAvatar) {
-          return storedAvatar;
-        }
-        
-        // If no stored avatar, generate one from name
-        if (!account) return this.generateDefaultAvatar('Anonymous');
-        
-        return this.generateDefaultAvatar(account.name);
-      }
-      
-      static generateDefaultAvatar(name) {
-        const initials = name
+      static generateInitials(name) {
+        return name
           .split(' ')
           .map(word => word[0])
           .join('')
           .toUpperCase()
           .slice(0, 2);
-        
-        // Generate consistent color based on name
-        let hash = 0;
-        for (let i = 0; i < name.length; i++) {
-          hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        
-        const colors = [
-          '667eea', '764ba2', 'f56565', 'ed8936', 'ecc94b',
-          '48bb78', '38b2ac', '4299e1', '9f7aea', 'ed64a6'
-        ];
-        const colorIndex = Math.abs(hash) % colors.length;
-        
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${colors[colorIndex]}&color=fff&bold=true&size=400`;
       }
       
-      static async processImageFile(file) {
+      static getInitials(account) {
+        if (!account) return '?';
+        return this.generateInitials(account.name);
+      }
+      
+      static async processAvatarImage(file) {
         return new Promise((resolve, reject) => {
           if (!file.type.startsWith('image/')) {
-            reject(new Error('Please select an image file'));
+            reject('Please select an image file');
             return;
           }
           
-          // Check file size (max 2MB)
           if (file.size > 2 * 1024 * 1024) {
-            reject(new Error('Image size should be less than 2MB'));
+            reject('Image must be less than 2MB');
             return;
           }
           
           const reader = new FileReader();
-          reader.onload = (event) => {
+          reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-              // Resize and compress image
               const canvas = document.getElementById('avatar-canvas');
               const ctx = canvas.getContext('2d');
               
               // Set canvas size
-              const size = Math.min(img.width, img.height);
-              canvas.width = 400;
-              canvas.height = 400;
+              const size = 400;
+              canvas.width = size;
+              canvas.height = size;
               
-              // Draw image centered and cropped
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-              
-              // Create circular clipping
+              // Create circular mask
+              ctx.clearRect(0, 0, size, size);
               ctx.beginPath();
-              ctx.arc(200, 200, 200, 0, Math.PI * 2);
+              ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
               ctx.closePath();
               ctx.clip();
               
-              // Calculate dimensions to maintain aspect ratio
-              const scale = 400 / size;
-              const x = (400 - img.width * scale) / 2;
-              const y = (400 - img.height * scale) / 2;
+              // Draw image
+              ctx.drawImage(img, 0, 0, size, size);
               
-              ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-              
-              // Convert to data URL
+              // Get data URL
               const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
               resolve(dataUrl);
             };
-            img.onerror = () => reject(new Error('Failed to load image'));
-            img.src = event.target.result;
+            img.onerror = () => reject('Failed to load image');
+            img.src = e.target.result;
           };
-          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.onerror = () => reject('Failed to read file');
           reader.readAsDataURL(file);
         });
       }
     }
-
-    // Default configuration
-    const defaultConfig = {
-      form_title: 'Blocked List Chat',
-      form_description: 'Community warnings & safety alerts',
-      submit_button_text: 'Add to List',
-      view_button_text: 'View Chat',
-      background_gradient_start: '#667eea',
-      background_gradient_end: '#764ba2',
-      card_background: '#ffffff',
-      text_color: '#2d3748',
-      secondary_text_color: '#718096',
-      button_gradient_start: '#667eea',
-      button_gradient_end: '#764ba2',
-      view_button_gradient_start: '#4CAF50',
-      view_button_gradient_end: '#45a049'
-    };
-
-    // DOM Elements
+    
+    // ============================================
+    // APPLICATION INITIALIZATION
+    // ============================================
     const accountModal = document.getElementById('account-modal');
     const appWrapper = document.getElementById('app-wrapper');
     const avatarPreview = document.getElementById('avatar-preview');
     const avatarUpload = document.getElementById('avatar-upload');
     const avatarUploadTrigger = document.getElementById('avatar-upload-trigger');
+    const avatarInitials = document.getElementById('avatar-initials');
     const accountForm = document.getElementById('account-form');
     const currentUserAvatar = document.getElementById('current-user-avatar');
+    const currentUserInitials = document.getElementById('current-user-initials');
     const currentUserName = document.getElementById('current-user-name');
-    const userStatusText = document.getElementById('user-status-text');
     const changeAccountBtn = document.getElementById('change-account-btn');
-    const formTitle = document.getElementById('form-title');
-    const formDescription = document.getElementById('form-description');
-    const submitText = document.getElementById('submit-text');
-    const viewText = document.getElementById('view-text');
     const submissionForm = document.getElementById('submission-form');
     const submitBtn = document.getElementById('submit-btn');
     const viewListBtn = document.getElementById('view-list-btn');
-    const successMessage = document.getElementById('success-message');
-    const errorMessage = document.getElementById('error-message');
-    const errorText = document.getElementById('error-text');
     const listModal = document.getElementById('list-modal');
     const closeModal = document.getElementById('close-modal');
     const closeModalAdd = document.getElementById('close-modal-add');
-    const loadingState = document.getElementById('loading-state');
-    const listContainer = document.getElementById('list-container');
     const listBody = document.getElementById('list-body');
+    const loadingState = document.getElementById('loading-state');
     const noData = document.getElementById('no-data');
     const listError = document.getElementById('list-error');
-    const listErrorText = document.getElementById('list-error-text');
     const retryLoad = document.getElementById('retry-load');
-    const chatSubtitle = document.getElementById('chat-subtitle');
-    const totalReports = document.getElementById('total-reports');
-    const yourReports = document.getElementById('your-reports');
-    const activeUsers = document.getElementById('active-users');
-
-    // Global state
+    
     let currentUser = null;
     let allMessages = [];
-
+    
     // Initialize app
     function initApp() {
       const account = UserAccount.getAccount();
       
       if (!account) {
-        accountModal.classList.remove('hidden');
-        appWrapper.classList.add('hidden');
-        
-        // Focus on name input
-        setTimeout(() => {
-          document.getElementById('account-name').focus();
-        }, 300);
+        showAccountModal();
       } else {
         currentUser = account;
-        updateUserProfile();
-        accountModal.classList.add('hidden');
-        appWrapper.classList.remove('hidden');
-        
-        // Focus on main input
-        setTimeout(() => {
-          document.getElementById('name-input').focus();
-        }, 300);
-        
-        // Update stats
-        updateStats();
+        showMainApp();
+        viewerCounter.start(); // Start viewer counter
       }
     }
-
-    // Update user profile display
+    
+    function showAccountModal() {
+      accountModal.classList.remove('hidden');
+      appWrapper.classList.add('hidden');
+      document.getElementById('account-name').focus();
+    }
+    
+    function showMainApp() {
+      accountModal.classList.add('hidden');
+      appWrapper.classList.remove('hidden');
+      updateUserProfile();
+      updateStats();
+      document.getElementById('name-input').focus();
+    }
+    
     function updateUserProfile() {
       if (!currentUser) return;
       
-      const displayName = UserAccount.getDisplayName(currentUser);
-      const avatarUrl = UserAccount.getAvatarUrl(currentUser);
+      currentUserName.textContent = currentUser.name;
+      currentUserInitials.textContent = UserAccount.getInitials(currentUser);
       
-      // Update profile
-      currentUserName.textContent = displayName;
-      currentUserAvatar.src = avatarUrl;
-      currentUserAvatar.alt = displayName;
+      // Set avatar background color based on name hash
+      const hash = currentUser.name.split('').reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+      }, 0);
       
-      // Update status based on report count
-      const reportCount = currentUser.reportCount || 0;
-      if (reportCount === 0) {
-        userStatusText.textContent = 'New contributor';
-      } else if (reportCount < 5) {
-        userStatusText.textContent = `${reportCount} reports`;
-      } else {
-        userStatusText.textContent = 'Trusted contributor';
+      const colors = [
+        '#667eea', '#764ba2', '#f56565', '#ed8936', '#ecc94b',
+        '#48bb78', '#38b2ac', '#4299e1', '#9f7aea', '#ed64a6'
+      ];
+      const color = colors[Math.abs(hash) % colors.length];
+      
+      currentUserAvatar.style.background = color;
+      
+      // If user has uploaded avatar, use it
+      const avatarData = UserAccount.getAvatarData(currentUser);
+      if (avatarData) {
+        currentUserAvatar.innerHTML = `<img src="${avatarData}" alt="${currentUser.name}">`;
       }
-      
-      // Update stats
-      yourReports.textContent = reportCount;
     }
-
-    // Update statistics
+    
     function updateStats() {
       if (!currentUser) return;
       
-      // Update your reports
-      yourReports.textContent = currentUser.reportCount || 0;
-      
-      // Simulate active users (could be fetched from server)
-      activeUsers.textContent = Math.floor(Math.random() * 5) + 1;
+      document.getElementById('your-reports').textContent = currentUser.reportCount || 0;
+      viewerCounter.updateViewerCount(); // Update viewer count
     }
-
-    // Handle avatar upload
-    avatarUploadTrigger.addEventListener('click', () => {
-      avatarUpload.click();
-    });
-
+    
+    // Avatar upload
+    avatarUploadTrigger.addEventListener('click', () => avatarUpload.click());
+    
     avatarUpload.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
       
       try {
-        const processedImage = await UserAccount.processImageFile(file);
-        avatarPreview.src = processedImage;
+        const avatarData = await UserAccount.processAvatarImage(file);
+        avatarPreview.innerHTML = `<img src="${avatarData}" alt="Avatar">`;
       } catch (error) {
-        alert(error.message);
+        alert(error);
       }
     });
-
-    // Handle account creation
+    
+    // Update avatar initials when name changes
+    document.getElementById('account-name').addEventListener('input', (e) => {
+      const initials = UserAccount.generateInitials(e.target.value || 'User');
+      avatarInitials.textContent = initials;
+    });
+    
+    // Account creation
     accountForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
       const nameInput = document.getElementById('account-name');
-      const usernameInput = document.getElementById('account-username');
-      
       if (!nameInput.value.trim()) {
-        showAlert('Please enter your name', 'error');
-        nameInput.focus();
+        alert('Please enter your name');
         return;
       }
       
-      // Disable button during processing
-      const submitBtn = accountForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating profile...';
+      // Get avatar data from preview
+      const avatarImg = avatarPreview.querySelector('img');
+      const avatarData = avatarImg ? avatarImg.src : null;
       
-      try {
-        // Create account with processed avatar
-        const avatarData = avatarPreview.src.startsWith('data:image') ? avatarPreview.src : '';
-        currentUser = UserAccount.createAccount(
-          nameInput.value.trim(),
-          usernameInput.value.trim(),
-          avatarData
-        );
-        
-        // Switch to main app with animation
-        accountModal.style.opacity = '0';
-        accountModal.style.transform = 'scale(0.9)';
-        
-        setTimeout(() => {
-          accountModal.classList.add('hidden');
-          appWrapper.classList.remove('hidden');
-          appWrapper.style.opacity = '0';
-          appWrapper.style.transform = 'scale(0.95)';
-          
-          updateUserProfile();
-          
-          // Animate in
-          setTimeout(() => {
-            appWrapper.style.transition = 'all 0.4s ease';
-            appWrapper.style.opacity = '1';
-            appWrapper.style.transform = 'scale(1)';
-            
-            // Focus on main input
-            document.getElementById('name-input').focus();
-          }, 10);
-        }, 300);
-        
-      } catch (error) {
-        showAlert(error.message, 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-      }
+      currentUser = UserAccount.createAccount(nameInput.value.trim(), avatarData);
+      showMainApp();
     });
-
-    // Handle change account
+    
+    // Change account
     changeAccountBtn.addEventListener('click', () => {
-      if (confirm('Switch to a different account? Your current profile will be removed from this device.')) {
-        UserAccount.deleteAccount();
-        
-        // Animate out
-        appWrapper.style.opacity = '0';
-        appWrapper.style.transform = 'scale(0.95)';
-        
-        setTimeout(() => {
-          appWrapper.classList.add('hidden');
-          accountModal.classList.remove('hidden');
-          
-          // Reset form
-          document.getElementById('account-name').value = '';
-          document.getElementById('account-username').value = '';
-          avatarPreview.src = 'https://ui-avatars.com/api/?name=User&background=667eea&color=fff&size=240';
-          
-          // Animate in
-          setTimeout(() => {
-            accountModal.style.transition = 'all 0.4s ease';
-            accountModal.style.opacity = '1';
-            accountModal.style.transform = 'scale(1)';
-            document.getElementById('account-name').focus();
-          }, 10);
-        }, 300);
+      if (confirm('Switch to different account?')) {
+        localStorage.removeItem(UserAccount.STORAGE_KEY);
+        showAccountModal();
       }
     });
-
-    // Show alert message
-    function showAlert(message, type = 'error') {
-      if (type === 'error') {
-        errorText.textContent = message;
-        errorMessage.classList.remove('hidden');
-        successMessage.classList.add('hidden');
-        
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-          errorMessage.classList.add('hidden');
-        }, 5000);
-      } else {
-        successMessage.querySelector('p').textContent = message;
-        successMessage.classList.remove('hidden');
-        errorMessage.classList.add('hidden');
-        
-        // Auto-hide after 3 seconds
-        setTimeout(() => {
-          successMessage.classList.add('hidden');
-        }, 3000);
-      }
-    }
-
-    // Handle form submission
+    
+    // Form submission
     submissionForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
       if (!currentUser) {
-        showAlert('Please create a profile first', 'error');
+        alert('Please create an account first');
         return;
       }
       
@@ -1253,217 +1020,201 @@
       const notesInput = document.getElementById('notes-input');
       
       if (!nameInput.value.trim()) {
-        showAlert('Please enter the name of the blocked person', 'error');
-        nameInput.focus();
+        alert('Please enter a name');
         return;
       }
       
-      // Disable button and show loading
       submitBtn.disabled = true;
       const originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Adding...';
       
       try {
-        // Google Form endpoint
         const FORM_ACTION_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfOzXT3fXroXRTYQ7J--pMWvpdJ_FPmXAvDNLS3z-UnYnti5g/formResponse';
-        
-        // Create form data
         const formData = new FormData();
         formData.append('entry.714302158', nameInput.value.trim());
         
-        // Include user info in notes
-        const userDisplayName = UserAccount.getDisplayName(currentUser);
+        // Add user info to notes
         const timestamp = new Date().toLocaleString();
-        const fullNotes = notesInput.value.trim() + 
-          (notesInput.value.trim() ? '\n\n' : '') +
-          `🚨 Reported by: ${userDisplayName} • ${timestamp}`;
+        const fullNotes = (notesInput.value.trim() ? notesInput.value.trim() + '\n\n' : '') +
+          `👤 Reported by: ${currentUser.name} • ⏰ ${timestamp}`;
         
         formData.append('entry.1541466423', fullNotes);
         
-        // Submit to Google Forms
         await fetch(FORM_ACTION_URL, {
           method: 'POST',
           body: formData,
           mode: 'no-cors'
         });
         
-        // Increment report count
+        // Update user stats
         UserAccount.incrementReportCount();
         currentUser = UserAccount.getAccount();
-        updateUserProfile();
+        updateStats();
         
         // Show success
-        showAlert(`"${nameInput.value.trim()}" added to blocked list!`, 'success');
+        document.getElementById('success-message').classList.remove('hidden');
+        document.getElementById('error-message').classList.add('hidden');
         
-        // Clear form
+        // Reset form
         nameInput.value = '';
         notesInput.value = '';
         nameInput.focus();
         
-        // Update stats
-        updateStats();
+        // Hide success after 3 seconds
+        setTimeout(() => {
+          document.getElementById('success-message').classList.add('hidden');
+        }, 3000);
         
       } catch (error) {
-        showAlert('Failed to submit. Please check your connection and try again.', 'error');
-        console.error('Submission error:', error);
+        document.getElementById('error-text').textContent = 'Failed to submit. Please try again.';
+        document.getElementById('error-message').classList.remove('hidden');
+        document.getElementById('success-message').classList.add('hidden');
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
       }
     });
-
-    // Function to fetch data from Google Sheets
-    async function fetchSheetData() {
+    
+    // View chat
+    viewListBtn.addEventListener('click', async () => {
+      listModal.classList.remove('hidden');
+      await loadChat();
+    });
+    
+    // Close modal
+    closeModal.addEventListener('click', () => {
+      listModal.classList.add('hidden');
+    });
+    
+    closeModalAdd.addEventListener('click', () => {
+      listModal.classList.add('hidden');
+      document.getElementById('name-input').focus();
+    });
+    
+    // Retry loading
+    retryLoad.addEventListener('click', loadChat);
+    
+    // Load chat data
+    async function loadChat() {
+      loadingState.classList.remove('hidden');
+      listBody.classList.add('hidden');
+      noData.classList.add('hidden');
+      listError.classList.add('hidden');
+      
       try {
-        loadingState.classList.remove('hidden');
-        listContainer.classList.add('hidden');
-        noData.classList.add('hidden');
-        listError.classList.add('hidden');
-        
-        // Clear previous data
-        listBody.innerHTML = '';
-        
         const sheetId = '1KKB-uxdVFvRSGHex192unt9D691Zh9SwUILXtD5Q7GM';
-        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&t=${Date.now()}`;
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
         
         const response = await fetch(csvUrl);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
         const csvText = await response.text();
         const rows = parseCSV(csvText);
+        
         allMessages = [];
         
         if (rows.length <= 1) {
-          loadingState.classList.add('hidden');
-          noData.classList.remove('hidden');
-          listContainer.classList.remove('hidden');
-          
-          // Update stats
-          totalReports.textContent = '0';
-          chatSubtitle.textContent = 'No warnings yet';
+          showNoData();
           return;
         }
         
-        // Get headers
+        // Process rows
         const headers = rows[0];
-        const nameIndex = headers.findIndex(h => 
-          h && (h.toLowerCase().includes('name') || h.toLowerCase().includes('blocked'))
-        );
+        const nameIndex = headers.findIndex(h => h && h.toLowerCase().includes('name'));
+        const notesIndex = headers.findIndex(h => h && h.toLowerCase().includes('note'));
         
-        const notesIndex = headers.findIndex(h => 
-          h && (h.toLowerCase().includes('note') || h.toLowerCase().includes('business') || h.toLowerCase().includes('info'))
-        );
-        
-        // Process data
-        rows.slice(1).reverse().forEach((row, index) => {
+        // Process all messages
+        rows.slice(1).forEach(row => {
           const name = nameIndex >= 0 ? (row[nameIndex] || '').trim() : '';
           let notes = notesIndex >= 0 ? (row[notesIndex] || '').trim() : '';
           
           if (name || notes) {
-            // Extract user info from notes
+            // Extract user info
             let userName = 'Anonymous';
-            let userAvatar = '';
             let timestamp = new Date();
             
-            const reportedByMatch = notes.match(/🚨 Reported by:\s*(.+?) • (.+)$/);
-            if (reportedByMatch) {
-              userName = reportedByMatch[1].trim();
-              // Remove the "Reported by:" part from notes
-              notes = notes.replace(/🚨 Reported by:\s*.+? • .+$/, '').trim();
-              
-              // Try to parse timestamp
-              try {
-                const dateString = reportedByMatch[2].trim();
-                timestamp = new Date(dateString);
-                if (isNaN(timestamp.getTime())) {
-                  timestamp = new Date();
-                }
-              } catch (e) {
-                timestamp = new Date();
-              }
+            const reportedMatch = notes.match(/👤 Reported by:\s*(.+?) • ⏰ (.+)$/);
+            if (reportedMatch) {
+              userName = reportedMatch[1].trim();
+              notes = notes.replace(/👤 Reported by:\s*.+? • ⏰ .+$/, '').trim();
             }
-            
-            // Generate avatar
-            userAvatar = UserAccount.generateDefaultAvatar(userName.replace('@', ''));
             
             allMessages.push({
               name,
               notes,
               userName,
-              userAvatar,
               timestamp,
-              index
+              isCurrentUser: currentUser && userName === currentUser.name
             });
           }
         });
         
-        // Update stats
-        totalReports.textContent = allMessages.length;
-        chatSubtitle.textContent = `${allMessages.length} community warnings`;
+        // Sort by timestamp (oldest to newest for correct display)
+        allMessages.sort((a, b) => a.timestamp - b.timestamp);
         
         // Display messages
         displayMessages();
         
       } catch (error) {
-        console.error('Error fetching sheet data:', error);
-        loadingState.classList.add('hidden');
-        listErrorText.textContent = 'Failed to load chat. Please check your internet connection.';
+        console.error('Error loading chat:', error);
         listError.classList.remove('hidden');
+        loadingState.classList.add('hidden');
       }
     }
-
-    // Display messages in chat
+    
     function displayMessages() {
       listBody.innerHTML = '';
       
       if (allMessages.length === 0) {
-        loadingState.classList.add('hidden');
-        noData.classList.remove('hidden');
-        listContainer.classList.remove('hidden');
+        showNoData();
         return;
       }
       
-      allMessages.forEach((message, idx) => {
-        // Check if this message is from current user
-        const isCurrentUser = currentUser && 
-          (message.userName === UserAccount.getDisplayName(currentUser) || 
-           message.userName.replace('@', '') === currentUser.username ||
-           message.userName === currentUser.name);
-        
-        // Format time
-        const timeString = message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const dateString = message.timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' });
-        
-        // Create message element
+      // Update total reports count
+      document.getElementById('total-reports').textContent = allMessages.length;
+      document.getElementById('chat-subtitle').textContent = `${allMessages.length} community warnings`;
+      
+      // Display each message
+      allMessages.forEach((msg, index) => {
         const messageDiv = document.createElement('div');
-        messageDiv.className = `chat-message slide-in ${isCurrentUser ? 'sent' : ''}`;
-        messageDiv.style.animationDelay = `${idx * 0.05}s`;
+        messageDiv.className = `chat-message ${msg.isCurrentUser ? 'sent slide-in-right' : 'slide-in-left'}`;
+        messageDiv.style.animationDelay = `${index * 0.05}s`;
+        
+        // Generate avatar
+        const initials = UserAccount.generateInitials(msg.userName);
+        const hash = msg.userName.split('').reduce((a, b) => {
+          a = ((a << 5) - a) + b.charCodeAt(0);
+          return a & a;
+        }, 0);
+        
+        const colors = [
+          '#667eea', '#764ba2', '#f56565', '#ed8936', '#ecc94b',
+          '#48bb78', '#38b2ac', '#4299e1', '#9f7aea', '#ed64a6'
+        ];
+        const color = colors[Math.abs(hash) % colors.length];
+        
+        // Time format
+        const timeString = msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const dateString = msg.timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' });
         
         messageDiv.innerHTML = `
-          <img src="${message.userAvatar}" 
-               alt="${message.userName}"
-               class="chat-avatar"
-               onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${message.userName.charAt(0)}&background=667eea&color=fff&size=400'">
-          
+          <div class="chat-avatar" style="background: ${color}">
+            ${initials}
+          </div>
           <div class="chat-bubble">
             <div class="chat-sender">
-              <i class="fas fa-user ${isCurrentUser ? 'text-white' : 'text-blue-500'}"></i>
-              ${message.userName}
+              <i class="fas fa-user"></i>
+              ${msg.userName}
             </div>
             
-            ${message.name ? `
+            ${msg.name ? `
             <div class="blocked-info">
               <div class="blocked-label">
                 <i class="fas fa-ban"></i>
                 BLOCKED PERSON
               </div>
-              <div class="blocked-name">${escapeHtml(message.name)}</div>
-              ${message.notes ? `<div class="blocked-notes">${escapeHtml(message.notes)}</div>` : ''}
+              <div class="blocked-name">${escapeHtml(msg.name)}</div>
+              ${msg.notes ? `<div class="blocked-notes">${escapeHtml(msg.notes)}</div>` : ''}
             </div>
-            ` : message.notes ? `<div>${escapeHtml(message.notes)}</div>` : ''}
+            ` : msg.notes ? `<div>${escapeHtml(msg.notes)}</div>` : ''}
             
             <div class="chat-time">
               <i class="far fa-clock"></i>
@@ -1476,181 +1227,76 @@
       });
       
       loadingState.classList.add('hidden');
-      listContainer.classList.remove('hidden');
+      listBody.classList.remove('hidden');
       
-      // Scroll to bottom
+      // Scroll to bottom to see latest messages
       setTimeout(() => {
         listBody.scrollTop = listBody.scrollHeight;
       }, 100);
     }
-
-    // Helper function to escape HTML
+    
+    function showNoData() {
+      loadingState.classList.add('hidden');
+      noData.classList.remove('hidden');
+      listBody.classList.add('hidden');
+    }
+    
+    // Helper functions
+    function parseCSV(csvText) {
+      const rows = [];
+      let row = [];
+      let cell = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < csvText.length; i++) {
+        const char = csvText[i];
+        const next = csvText[i + 1];
+        
+        if (char === '"') {
+          if (inQuotes && next === '"') {
+            cell += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          row.push(cell);
+          cell = '';
+        } else if (char === '\n' && !inQuotes) {
+          row.push(cell);
+          rows.push(row);
+          row = [];
+          cell = '';
+        } else if (char === '\r' && next === '\n' && !inQuotes) {
+          row.push(cell);
+          rows.push(row);
+          row = [];
+          cell = '';
+          i++;
+        } else {
+          cell += char;
+        }
+      }
+      
+      if (cell || row.length) {
+        row.push(cell);
+        rows.push(row);
+      }
+      
+      return rows;
+    }
+    
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     }
-
-    // Simple CSV parser
-    function parseCSV(csvText) {
-      const rows = [];
-      let currentRow = [];
-      let currentCell = '';
-      let insideQuotes = false;
-      
-      for (let i = 0; i < csvText.length; i++) {
-        const char = csvText[i];
-        const nextChar = csvText[i + 1];
-        
-        if (char === '"') {
-          if (insideQuotes && nextChar === '"') {
-            currentCell += '"';
-            i++;
-          } else {
-            insideQuotes = !insideQuotes;
-          }
-        } else if (char === ',' && !insideQuotes) {
-          currentRow.push(currentCell);
-          currentCell = '';
-        } else if (char === '\n' && !insideQuotes) {
-          currentRow.push(currentCell);
-          rows.push(currentRow);
-          currentRow = [];
-          currentCell = '';
-        } else if (char === '\r' && nextChar === '\n' && !insideQuotes) {
-          currentRow.push(currentCell);
-          rows.push(currentRow);
-          currentRow = [];
-          currentCell = '';
-          i++;
-        } else {
-          currentCell += char;
-        }
-      }
-      
-      if (currentCell !== '' || currentRow.length > 0) {
-        currentRow.push(currentCell);
-        rows.push(currentRow);
-      }
-      
-      return rows;
-    }
-
-    // Open modal and load data
-    viewListBtn.addEventListener('click', async () => {
-      listModal.classList.remove('hidden');
-      await fetchSheetData();
-    });
-
-    // Close modal
-    closeModal.addEventListener('click', () => {
-      listModal.classList.add('hidden');
-    });
-
-    // Close modal and go to add
-    closeModalAdd.addEventListener('click', () => {
-      listModal.classList.add('hidden');
-      document.getElementById('name-input').focus();
-    });
-
-    // Close modal when clicking outside
-    listModal.addEventListener('click', (e) => {
-      if (e.target === listModal) {
-        listModal.classList.add('hidden');
-      }
-    });
-
-    // Retry loading data
-    retryLoad.addEventListener('click', fetchSheetData);
-
-    // Element SDK initialization
-    if (window.elementSdk) {
-      const elementHandler = {
-        defaultConfig,
-        onConfigChange: async (config) => {
-          formTitle.textContent = config.form_title || defaultConfig.form_title;
-          formDescription.textContent = config.form_description || defaultConfig.form_description;
-          submitText.textContent = config.submit_button_text || defaultConfig.submit_button_text;
-          viewText.textContent = config.view_button_text || defaultConfig.view_button_text;
-          
-          const bgGradStart = config.background_gradient_start || defaultConfig.background_gradient_start;
-          const bgGradEnd = config.background_gradient_end || defaultConfig.background_gradient_end;
-          const cardBg = config.card_background || defaultConfig.card_background;
-          const textColor = config.text_color || defaultConfig.text_color;
-          const secondaryText = config.secondary_text_color || defaultConfig.secondary_text_color;
-          const btnGradStart = config.button_gradient_start || defaultConfig.button_gradient_start;
-          const btnGradEnd = config.button_gradient_end || defaultConfig.button_gradient_end;
-          const viewBtnGradStart = config.view_button_gradient_start || defaultConfig.view_button_gradient_start;
-          const viewBtnGradEnd = config.view_button_gradient_end || defaultConfig.view_button_gradient_end;
-          
-          appWrapper.style.background = `linear-gradient(135deg, ${bgGradStart} 0%, ${bgGradEnd} 100%)`;
-          document.querySelector('.rounded-3xl').style.backgroundColor = cardBg;
-          
-          formTitle.style.color = textColor;
-          formDescription.style.color = secondaryText;
-          
-          document.querySelectorAll('label').forEach(el => {
-            el.style.color = textColor;
-          });
-          
-          submitBtn.style.background = `linear-gradient(135deg, ${btnGradStart} 0%, ${btnGradEnd} 100%)`;
-          viewListBtn.style.background = `linear-gradient(135deg, ${viewBtnGradStart} 0%, ${viewBtnGradEnd} 100%)`;
-          
-          document.querySelector('#list-modal h2').style.color = textColor;
-        },
-        mapToCapabilities: (config) => ({
-          recolorables: [
-            {
-              get: () => config.background_gradient_start || defaultConfig.background_gradient_start,
-              set: (value) => window.elementSdk.setConfig({ background_gradient_start: value })
-            },
-            {
-              get: () => config.card_background || defaultConfig.card_background,
-              set: (value) => window.elementSdk.setConfig({ card_background: value })
-            },
-            {
-              get: () => config.text_color || defaultConfig.text_color,
-              set: (value) => window.elementSdk.setConfig({ text_color: value })
-            },
-            {
-              get: () => config.button_gradient_start || defaultConfig.button_gradient_start,
-              set: (value) => window.elementSdk.setConfig({ button_gradient_start: value })
-            },
-            {
-              get: () => config.secondary_text_color || defaultConfig.secondary_text_color,
-              set: (value) => window.elementSdk.setConfig({ secondary_text_color: value })
-            },
-            {
-              get: () => config.view_button_gradient_start || defaultConfig.view_button_gradient_start,
-              set: (value) => window.elementSdk.setConfig({ view_button_gradient_start: value })
-            }
-          ],
-          borderables: [],
-          fontEditable: undefined,
-          fontSizeable: undefined
-        }),
-        mapToEditPanelValues: (config) => new Map([
-          ['form_title', config.form_title || defaultConfig.form_title],
-          ['form_description', config.form_description || defaultConfig.form_description],
-          ['submit_button_text', config.submit_button_text || defaultConfig.submit_button_text],
-          ['view_button_text', config.view_button_text || defaultConfig.view_button_text]
-        ])
-      };
-      
-      window.elementSdk.init(elementHandler);
-    }
-
-    // Initialize app on page load
+    
+    // Initialize when page loads
     window.addEventListener('DOMContentLoaded', initApp);
     
-    // Add keyboard shortcuts
+    // Close modal with Escape key
     document.addEventListener('keydown', (e) => {
-      // Ctrl+Enter to submit form
-      if (e.ctrlKey && e.key === 'Enter' && !listModal.classList.contains('hidden')) {
-        listModal.classList.add('hidden');
-      }
-      
-      // Escape to close modal
       if (e.key === 'Escape' && !listModal.classList.contains('hidden')) {
         listModal.classList.add('hidden');
       }
