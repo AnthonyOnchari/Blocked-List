@@ -1,117 +1,562 @@
 <!doctype html>
 <html lang="en" class="h-full">
- <head>
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Name Submission Form</title>
+  <title>Blocked List Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/_sdk/element_sdk.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    body {
+    * {
+      margin: 0;
+      padding: 0;
       box-sizing: border-box;
+    }
+    
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
       font-family: 'Outfit', sans-serif;
     }
     
+    body {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+    
     @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     
-    .fade-in {
-      animation: fadeIn 0.4s ease-out forwards;
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
     
+    .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    .slide-up { animation: slideUp 0.3s ease; }
+    
+    /* Main app container - NO SCROLL */
+    #app-wrapper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1;
+    }
+    
+    #app-wrapper.active {
+      display: flex;
+    }
+    
+    /* App content - with controlled scroll */
+    .app-content {
+      width: 100%;
+      max-width: 500px;
+      height: 100%;
+      max-height: 800px;
+    }
+    
+    .app-card {
+      background: white;
+      border-radius: 24px;
+      padding: 24px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+    
+    /* Live viewers */
+    .live-viewers {
+      position: absolute;
+      top: -12px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 10;
+    }
+    
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background: #ff4757;
+      border-radius: 50%;
+      animation: fadeIn 1s infinite alternate;
+    }
+    
+    /* Connection Status */
+    .connection-status {
+      padding: 10px 14px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      border-left: 4px solid #28a745;
+      background: #d4edda;
+    }
+    
+    .connection-status.error {
+      background: #f8d7da;
+      border-left-color: #dc3545;
+    }
+    
+    /* Chat modal */
+    .chat-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      flex-direction: column;
+      z-index: 1000;
+    }
+    
+    .chat-modal.active {
+      display: flex;
+    }
+    
+    .chat-header {
+      padding: 16px 20px;
+      background: white;
+      border-bottom: 1px solid #e5e5ea;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    
+    /* Chat container - SCROLLABLE AREA */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: #f0f2f5;
+    }
+    
+    .chat-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .chat-messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 3px;
+    }
+    
+    /* Chat message */
+    .message {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      max-width: 85%;
+    }
+    
+    .message.sent {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+    
+    .message-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 13px;
+      color: white;
+    }
+    
+    .message-bubble {
+      padding: 12px 16px;
+      border-radius: 18px;
+      max-width: calc(100% - 50px);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      position: relative;
+    }
+    
+    .message:not(.sent) .message-bubble {
+      background: white;
+      border: 1px solid #e5e5ea;
+      border-radius: 18px 18px 18px 4px;
+    }
+    
+    .message.sent .message-bubble {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 18px 18px 4px 18px;
+    }
+    
+    .message-sender {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .message-text {
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    
+    /* TIMESTAMP - FIXED: Simple positioning inside message bubble */
+    .message-timestamp {
+      position: absolute;
+      bottom: -18px;
+      right: 8px;
+      font-size: 10px;
+      color: #666;
+      white-space: nowrap;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 2px 6px;
+      border-radius: 10px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .message.sent .message-timestamp {
+      right: auto;
+      left: 8px;
+      color: rgba(255, 255, 255, 0.8);
+      background: rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Blocked info */
+    .blocked-info {
+      background: rgba(239, 68, 68, 0.1);
+      padding: 10px 12px;
+      border-radius: 12px;
+      margin-top: 8px;
+      border-left: 3px solid #dc2626;
+    }
+    
+    .blocked-name {
+      font-weight: 600;
+      color: #7f1d1d;
+      font-size: 15px;
+    }
+    
+    .blocked-reason {
+      font-size: 13px;
+      color: #7f1d1d;
+      margin-top: 4px;
+    }
+    
+    /* Account modal */
+    .account-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 20px;
+    }
+    
+    .account-card {
+      background: white;
+      border-radius: 20px;
+      max-width: 400px;
+      width: 100%;
+      padding: 32px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+    
+    /* Loading states */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 16px;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e5e5ea;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Form elements */
     .submit-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
     }
-  </style>
-  <style>@view-transition { navigation: auto; }</style>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
- </head>
- <body class="h-full">
-  <div id="app-wrapper" class="h-full w-full overflow-auto" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-   <div class="min-h-full w-full flex flex-col items-center justify-center py-12 px-4">
-    <div class="w-full max-w-lg"><!-- Form Card -->
-     <div class="rounded-3xl p-8 shadow-2xl" style="background-color: #ffffff;"><!-- Header -->
-      <div class="text-center mb-8">
-       <h1 id="form-title" class="text-3xl font-bold mb-3" style="color: #2d3748;">Blocked List</h1>
-       <p id="form-description" class="text-base" style="color: #718096;">Fill out the form below to add the blocked one to the list</p>
-      </div><!-- Connection Status -->
-      <div class="mb-6 p-4 rounded-xl" style="background-color: #d4edda; border-left: 4px solid #28a745;">
-       <div class="flex items-center">
-        <svg class="h-5 w-5 mr-2" style="color: #28a745;" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p class="text-sm font-semibold" style="color: #155724;">✅ Tonnie / Slimkanono Came up with this</p>
-       </div>
-      </div><!-- Form -->
-      <form id="submission-form" class="space-y-5">
-       <div><label for="name-input" class="block text-sm font-semibold mb-2" style="color: #2d3748;">Blocked Person *</label> <input type="text" id="name-input" name="name" required placeholder="Enter your full name..." class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all" style="border-color: #e2e8f0; color: #2d3748;">
-       </div>
+    
+    /* Success/Error messages */
+    .success-message {
+      background-color: #d4edda;
+      border-left: 4px solid #28a745;
+    }
+    
+    .error-message {
+      background-color: #f8d7da;
+      border-left: 4px solid #dc3545;
+    }
+    
+    /* Responsive */
+    @media (max-width: 640px) {
+      .app-content {
+        max-height: none;
+      }
       
-       <div><label for="notes-input" class="block text-sm font-semibold mb-2" style="color: #2d3748;">Business / Notes (optional)</label> <textarea id="notes-input" name="notes" rows="3" placeholder="Add any additional information..." class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all resize-none" style="border-color: #e2e8f0; color: #2d3748;"></textarea>
-       </div><button type="submit" id="submit-btn" class="submit-btn w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"> <span id="submit-text">Submit</span> </button>
-      </form><!-- Success Message -->
-      <div id="success-message" class="hidden mt-6 p-4 rounded-xl fade-in" style="background-color: #d4edda; border-left: 4px solid #28a745;">
-       <div class="flex items-center">
-        <svg class="h-6 w-6 mr-2" style="color: #28a745;" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p class="font-semibold" style="color: #155724;">Success! Your name has been submitted.</p>
-       </div>
-      </div><!-- Error Message -->
-      <div id="error-message" class="hidden mt-6 p-4 rounded-xl fade-in" style="background-color: #f8d7da; border-left: 4px solid #dc3545;">
-       <div class="flex items-center">
-        <svg class="h-6 w-6 mr-2" style="color: #dc3545;" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p class="font-semibold" style="color: #721c24;" id="error-text">Something went wrong. Please try again.</p>
-       </div>
+      .app-card {
+        border-radius: 16px;
+        padding: 16px;
+      }
+      
+      .live-viewers {
+        top: -10px;
+        right: 10px;
+        padding: 4px 10px;
+        font-size: 11px;
+      }
+    }
+  </style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+</head>
+<body class="h-full">
+  <!-- Account Modal -->
+  <div id="account-modal" class="account-modal">
+    <div class="account-card">
+      <h2 id="account-title" class="text-2xl font-bold mb-6">Create Profile</h2>
+      <div class="mb-6">
+        <input type="text" id="user-name-input" 
+               placeholder="Enter your name"
+               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
       </div>
-     </div><!-- Footer Note -->
-     <p class="text-center mt-6 text-sm text-white opacity-90">All submissions are saved to Admin's</p>
+      <button id="create-account-btn" 
+              class="submit-btn w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold hover:opacity-90">
+        Create Profile
+      </button>
     </div>
-   </div>
   </div>
+
+  <!-- Main App -->
+  <div id="app-wrapper" class="active">
+    <!-- Live Viewers -->
+    <div class="live-viewers">
+      <span class="live-dot"></span>
+      <span id="viewer-count">1</span>
+      <span>online</span>
+    </div>
+    
+    <!-- App Content -->
+    <div class="app-content">
+      <div class="app-card">
+        <!-- Connection Status -->
+        <div id="connection-status" class="connection-status">
+          <div class="flex items-center">
+            <i class="fas fa-check-circle mr-2" style="color: #28a745;"></i>
+            <p class="text-sm font-semibold" style="color: #155724;">✅ Connected to Blocked List</p>
+          </div>
+        </div>
+        
+        <!-- User Profile -->
+        <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-xl mb-6">
+          <div id="user-avatar" class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold">
+            U
+          </div>
+          <div class="flex-1">
+            <div id="display-name" class="font-semibold">User</div>
+            <div class="text-xs text-gray-500">Ready to report</div>
+          </div>
+          <button id="switch-account" class="text-sm text-blue-600">Switch</button>
+        </div>
+        
+        <!-- Title -->
+        <div class="text-center mb-8">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+            <i class="fas fa-ban text-white text-2xl"></i>
+          </div>
+          <h1 id="form-title" class="text-2xl font-bold mb-2">Blocked List</h1>
+          <p id="form-description" class="text-gray-600">Community safety chat</p>
+        </div>
+        
+        <!-- Form -->
+        <form id="report-form" class="space-y-4 mb-6">
+          <div>
+            <label class="block text-sm font-semibold mb-2">Blocked Person *</label>
+            <input type="text" id="blocked-name" placeholder="Enter name..." required
+                   class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-semibold mb-2">Reason (Optional)</label>
+            <textarea id="reason" rows="3" placeholder="Add any additional information..."
+                      class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <button type="submit" id="submit-btn"
+                    class="submit-btn py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold hover:opacity-90">
+              <i class="fas fa-plus mr-2"></i><span id="submit-text">Report</span>
+            </button>
+            
+            <button type="button" id="view-chat-btn"
+                    class="py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold hover:opacity-90">
+              <i class="fas fa-comments mr-2"></i>View Chat
+            </button>
+          </div>
+        </form>
+        
+        <!-- Messages -->
+        <div id="success-message" class="hidden p-3 rounded-r mb-4 fade-in success-message">
+          <div class="flex items-center">
+            <i class="fas fa-check-circle text-green-500 mr-2"></i>
+            <span class="text-green-800">Success! Your report has been submitted.</span>
+          </div>
+        </div>
+        
+        <div id="error-message" class="hidden p-3 rounded-r mb-4 fade-in error-message">
+          <div class="flex items-center">
+            <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+            <span id="error-text" class="text-red-800">Error</span>
+          </div>
+        </div>
+        
+        <!-- Stats -->
+        <div class="mt-auto pt-4 border-t border-gray-200">
+          <div class="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div id="total-reports" class="text-xl font-bold">0</div>
+              <div class="text-xs text-gray-500">Total</div>
+            </div>
+            <div>
+              <div id="your-reports" class="text-xl font-bold">0</div>
+              <div class="text-xs text-gray-500">Yours</div>
+            </div>
+            <div>
+              <div id="online-users" class="text-xl font-bold">1</div>
+              <div class="text-xs text-gray-500">Online</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Footer Note -->
+        <p class="text-center mt-4 text-xs text-gray-500 opacity-90">All submissions are saved securely</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Modal -->
+  <div id="chat-modal" class="chat-modal">
+    <!-- Header -->
+    <div class="chat-header">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+          <i class="fas fa-ban text-white"></i>
+        </div>
+        <div>
+          <div class="font-semibold">Blocked List Chat</div>
+          <div id="chat-stats" class="text-xs text-gray-500">0 reports</div>
+        </div>
+      </div>
+      <button id="close-chat" class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <!-- Chat Area -->
+    <div id="chat-messages" class="chat-messages">
+      <!-- Messages will be loaded here -->
+    </div>
+    
+    <!-- Loading -->
+    <div id="chat-loading" class="loading">
+      <div class="spinner"></div>
+      <div class="text-gray-600">Loading messages...</div>
+    </div>
+    
+    <!-- Empty -->
+    <div id="chat-empty" class="loading hidden">
+      <i class="fas fa-comment-slash text-gray-300 text-4xl"></i>
+      <div class="text-gray-600">No reports yet</div>
+      <button id="start-report" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">
+        Make First Report
+      </button>
+    </div>
+    
+    <!-- Error -->
+    <div id="chat-error" class="loading hidden">
+      <i class="fas fa-exclamation-triangle text-red-400 text-4xl"></i>
+      <div class="text-gray-600">Failed to load</div>
+      <button id="retry-chat" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">
+        Try Again
+      </button>
+    </div>
+  </div>
+
   <script>
-    // Default configuration
+    // ============================================
+    // ELEMENT SDK CONFIGURATION
+    // ============================================
     const defaultConfig = {
-      form_title: 'Submit Your Name',
-      form_description: 'Fill out the form below to add your name to the list',
-      submit_button_text: 'Submit',
+      form_title: 'Blocked List',
+      form_description: 'Community safety chat',
+      submit_button_text: 'Report',
+      account_title: 'Create Profile',
       background_gradient_start: '#667eea',
       background_gradient_end: '#764ba2',
       card_background: '#ffffff',
       text_color: '#2d3748',
       secondary_text_color: '#718096',
       button_gradient_start: '#667eea',
-      button_gradient_end: '#764ba2'
+      button_gradient_end: '#764ba2',
+      sent_message_gradient_start: '#667eea',
+      sent_message_gradient_end: '#764ba2',
+      received_message_color: '#ffffff'
     };
 
-    // DOM Elements
-    const formTitle = document.getElementById('form-title');
-    const formDescription = document.getElementById('form-description');
-    const submitText = document.getElementById('submit-text');
-    const submissionForm = document.getElementById('submission-form');
-    const submitBtn = document.getElementById('submit-btn');
-    const successMessage = document.getElementById('success-message');
-    const errorMessage = document.getElementById('error-message');
-    const errorText = document.getElementById('error-text');
-    const appWrapper = document.getElementById('app-wrapper');
-
-    // Element SDK initialization
+    // Element SDK Handler
     const elementHandler = {
       defaultConfig,
       onConfigChange: async (config) => {
         // Update text content
-        formTitle.textContent = config.form_title || defaultConfig.form_title;
-        formDescription.textContent = config.form_description || defaultConfig.form_description;
-        submitText.textContent = config.submit_button_text || defaultConfig.submit_button_text;
+        document.getElementById('form-title').textContent = config.form_title || defaultConfig.form_title;
+        document.getElementById('form-description').textContent = config.form_description || defaultConfig.form_description;
+        document.getElementById('submit-text').textContent = config.submit_button_text || defaultConfig.submit_button_text;
+        document.getElementById('account-title').textContent = config.account_title || defaultConfig.account_title;
         
         // Update colors
         const bgGradStart = config.background_gradient_start || defaultConfig.background_gradient_start;
@@ -121,18 +566,44 @@
         const secondaryText = config.secondary_text_color || defaultConfig.secondary_text_color;
         const btnGradStart = config.button_gradient_start || defaultConfig.button_gradient_start;
         const btnGradEnd = config.button_gradient_end || defaultConfig.button_gradient_end;
+        const sentMsgStart = config.sent_message_gradient_start || defaultConfig.sent_message_gradient_start;
+        const sentMsgEnd = config.sent_message_gradient_end || defaultConfig.sent_message_gradient_end;
+        const receivedMsgColor = config.received_message_color || defaultConfig.received_message_color;
         
-        appWrapper.style.background = `linear-gradient(135deg, ${bgGradStart} 0%, ${bgGradEnd} 100%)`;
-        document.querySelector('.rounded-3xl').style.backgroundColor = cardBg;
+        // Update app background
+        document.getElementById('app-wrapper').style.background = `linear-gradient(135deg, ${bgGradStart} 0%, ${bgGradEnd} 100%)`;
         
-        formTitle.style.color = textColor;
-        formDescription.style.color = secondaryText;
+        // Update card background
+        document.querySelector('.app-card').style.backgroundColor = cardBg;
         
+        // Update text colors
+        document.getElementById('form-title').style.color = textColor;
+        document.getElementById('form-description').style.color = secondaryText;
+        
+        // Update form labels
         document.querySelectorAll('label').forEach(el => {
           el.style.color = textColor;
         });
         
-        submitBtn.style.background = `linear-gradient(135deg, ${btnGradStart} 0%, ${btnGradEnd} 100%)`;
+        // Update buttons
+        document.getElementById('submit-btn').style.background = `linear-gradient(135deg, ${btnGradStart} 0%, ${btnGradEnd} 100%)`;
+        document.getElementById('create-account-btn').style.background = `linear-gradient(135deg, ${btnGradStart} 0%, ${btnGradEnd} 100%)`;
+        
+        // Update sent message gradients in chat
+        document.querySelectorAll('.message.sent .message-bubble').forEach(el => {
+          el.style.background = `linear-gradient(135deg, ${sentMsgStart} 0%, ${sentMsgEnd} 100%)`;
+        });
+        
+        // Update received message colors
+        document.querySelectorAll('.message:not(.sent) .message-bubble').forEach(el => {
+          el.style.backgroundColor = receivedMsgColor;
+        });
+        
+        // Update account modal background
+        document.getElementById('account-modal').style.background = `linear-gradient(135deg, ${bgGradStart} 0%, ${bgGradEnd} 100%)`;
+        
+        // Update chat modal icon gradient
+        document.querySelector('.chat-header .rounded-full').style.background = `linear-gradient(135deg, ${btnGradStart} 0%, ${btnGradEnd} 100%)`;
       },
       mapToCapabilities: (config) => ({
         recolorables: [
@@ -155,6 +626,10 @@
           {
             get: () => config.secondary_text_color || defaultConfig.secondary_text_color,
             set: (value) => window.elementSdk.setConfig({ secondary_text_color: value })
+          },
+          {
+            get: () => config.sent_message_gradient_start || defaultConfig.sent_message_gradient_start,
+            set: (value) => window.elementSdk.setConfig({ sent_message_gradient_start: value })
           }
         ],
         borderables: [],
@@ -164,85 +639,682 @@
       mapToEditPanelValues: (config) => new Map([
         ['form_title', config.form_title || defaultConfig.form_title],
         ['form_description', config.form_description || defaultConfig.form_description],
-        ['submit_button_text', config.submit_button_text || defaultConfig.submit_button_text]
+        ['submit_button_text', config.submit_button_text || defaultConfig.submit_button_text],
+        ['account_title', config.account_title || defaultConfig.account_title]
       ])
     };
-
-    // Hide messages
-    function hideMessages() {
-      successMessage.classList.add('hidden');
-      errorMessage.classList.add('hidden');
-    }
-
-    // Show success
-    function showSuccess() {
-      hideMessages();
-      successMessage.classList.remove('hidden');
-      setTimeout(() => {
-        successMessage.classList.add('hidden');
-      }, 5000);
-    }
-
-    // Show error
-    function showError(message) {
-      hideMessages();
-      errorText.textContent = message;
-      errorMessage.classList.remove('hidden');
-    }
-
-    // Handle form submission
-    submissionForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const nameInput = document.getElementById('name-input');
-      const emailInput = document.getElementById('email-input');
-      const notesInput = document.getElementById('notes-input');
-      
-      if (!nameInput.value.trim()) {
-        showError('Please enter your name');
-        return;
-      }
-      
-      // Show loading state
-      submitBtn.disabled = true;
-      submitText.textContent = 'Submitting...';
-      hideMessages();
-      
-      try {
-        // Google Form endpoint
-        const FORM_ACTION_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfOzXT3fXroXRTYQ7J--pMWvpdJ_FPmXAvDNLS3z-UnYnti5g/formResponse';
-        
-        // Create form data with your Google Form field IDs
-        const formData = new FormData();
-        formData.append('entry.714302158', nameInput.value.trim());  // Name field
-        formData.append('entry.505087478', emailInput.value.trim());  // Email field
-        formData.append('entry.1541466423', notesInput.value.trim()); // Notes field
-        
-        // Submit to Google Forms
-        await fetch(FORM_ACTION_URL, {
-          method: 'POST',
-          body: formData,
-          mode: 'no-cors' // Required for Google Forms
-        });
-        
-        // Show success
-        showSuccess();
-        submissionForm.reset();
-        
-      } catch (error) {
-        showError('Failed to submit. Please check your connection and try again.');
-        console.error('Submission error:', error);
-      } finally {
-        submitBtn.disabled = false;
-        const config = window.elementSdk?.config || defaultConfig;
-        submitText.textContent = config.submit_button_text || defaultConfig.submit_button_text;
-      }
-    });
 
     // Initialize Element SDK
     if (window.elementSdk) {
       window.elementSdk.init(elementHandler);
     }
+
+    // ============================================
+    // REAL-TIME VIEWER COUNTER
+    // ============================================
+    class ViewerCounter {
+      constructor() {
+        this.viewers = 1;
+        this.userId = this.generateUserId();
+        this.interval = null;
+      }
+      
+      generateUserId() {
+        let id = localStorage.getItem('viewer_id');
+        if (!id) {
+          id = 'viewer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem('viewer_id', id);
+        }
+        return id;
+      }
+      
+      updateViewerCount() {
+        try {
+          const now = Date.now();
+          const viewersData = JSON.parse(localStorage.getItem('blocked_viewers') || '{}');
+          
+          // Clean old entries (older than 30 seconds)
+          Object.keys(viewersData).forEach(id => {
+            if (now - viewersData[id] > 30000) {
+              delete viewersData[id];
+            }
+          });
+          
+          // Update current user
+          viewersData[this.userId] = now;
+          
+          // Save and count
+          localStorage.setItem('blocked_viewers', JSON.stringify(viewersData));
+          const count = Object.keys(viewersData).length;
+          
+          // Update display
+          this.viewers = count;
+          document.getElementById('viewer-count').textContent = count;
+          document.getElementById('online-users').textContent = count;
+          
+          return count;
+        } catch (error) {
+          return 1;
+        }
+      }
+      
+      start() {
+        this.updateViewerCount();
+        
+        this.interval = setInterval(() => {
+          this.updateViewerCount();
+        }, 5000);
+        
+        // Update on activity
+        ['click', 'mousemove', 'keydown'].forEach(event => {
+          window.addEventListener(event, () => {
+            this.updateViewerCount();
+          });
+        });
+      }
+      
+      stop() {
+        if (this.interval) {
+          clearInterval(this.interval);
+        }
+      }
+    }
+    
+    // ============================================
+    // USER ACCOUNT
+    // ============================================
+    class UserAccount {
+      static STORAGE_KEY = 'blocked_user_account';
+      
+      static create(name) {
+        const account = {
+          id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+          name: name.trim(),
+          color: this.generateColor(name),
+          created: Date.now(),
+          reports: 0
+        };
+        
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(account));
+        return account;
+      }
+      
+      static get() {
+        const data = localStorage.getItem(this.STORAGE_KEY);
+        return data ? JSON.parse(data) : null;
+      }
+      
+      static update(updates) {
+        const account = this.get();
+        if (!account) return null;
+        
+        const updated = { ...account, ...updates };
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      }
+      
+      static addReport() {
+        const account = this.get();
+        if (!account) return 0;
+        
+        const count = (account.reports || 0) + 1;
+        this.update({ reports: count });
+        return count;
+      }
+      
+      static generateColor(name) {
+        const colors = [
+          '#667eea', '#764ba2', '#f56565', '#ed8936', '#ecc94b',
+          '#48bb78', '#38b2ac', '#4299e1', '#9f7aea', '#ed64a6'
+        ];
+        
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        return colors[Math.abs(hash) % colors.length];
+      }
+      
+      static getInitials(name) {
+        return name
+          .split(' ')
+          .map(word => word[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+      }
+    }
+    
+    // ============================================
+    // MESSAGE MANAGER
+    // ============================================
+    class MessageManager {
+      constructor() {
+        this.messages = [];
+        this.lastUpdate = 0;
+        this.updateInterval = null;
+        this.localMessages = this.loadLocalMessages();
+      }
+      
+      loadLocalMessages() {
+        try {
+          return JSON.parse(localStorage.getItem('local_messages') || '[]');
+        } catch {
+          return [];
+        }
+      }
+      
+      saveLocalMessages() {
+        localStorage.setItem('local_messages', JSON.stringify(this.localMessages));
+      }
+      
+      async loadFromGoogleSheet() {
+        try {
+          const sheetId = '1KKB-uxdVFvRSGHex192unt9D691Zh9SwUILXtD5Q7GM';
+          const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+          
+          const response = await fetch(csvUrl);
+          const csvText = await response.text();
+          const rows = this.parseCSV(csvText);
+          
+          if (rows.length < 2) return [];
+          
+          const headers = rows[0];
+          const nameIndex = headers.findIndex(h => h && h.toLowerCase().includes('name'));
+          const notesIndex = headers.findIndex(h => h && h.toLowerCase().includes('note'));
+          
+          const messages = [];
+          
+          for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            const blockedName = nameIndex >= 0 ? (row[nameIndex] || '').trim() : '';
+            const notes = notesIndex >= 0 ? (row[notesIndex] || '').trim() : '';
+            
+            if (blockedName) {
+              // Extract timestamp from notes
+              let timestamp = new Date();
+              let reason = notes;
+              
+              // Try to extract ISO timestamp from notes
+              const isoMatch = notes.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+              if (isoMatch) {
+                try {
+                  timestamp = new Date(isoMatch[0]);
+                  reason = notes.replace(isoMatch[0], '').trim();
+                } catch (e) {
+                  // Keep default timestamp
+                }
+              }
+              
+              messages.push({
+                id: `sheet_${i}`,
+                blockedName: blockedName,
+                reason: reason,
+                timestamp: timestamp,
+                source: 'sheet'
+              });
+            }
+          }
+          
+          // Merge with local messages
+          const allMessages = [...messages, ...this.localMessages];
+          
+          // Sort by timestamp (newest first for display)
+          allMessages.sort((a, b) => b.timestamp - a.timestamp);
+          
+          return allMessages;
+        } catch (error) {
+          console.error('Error loading messages:', error);
+          return this.localMessages; // Fallback to local messages
+        }
+      }
+      
+      parseCSV(text) {
+        const rows = [];
+        let row = [];
+        let cell = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          const next = text[i + 1];
+          
+          if (char === '"') {
+            if (inQuotes && next === '"') {
+              cell += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (char === ',' && !inQuotes) {
+            row.push(cell);
+            cell = '';
+          } else if (char === '\n' && !inQuotes) {
+            row.push(cell);
+            rows.push(row);
+            row = [];
+            cell = '';
+          } else {
+            cell += char;
+          }
+        }
+        
+        if (cell || row.length) {
+          row.push(cell);
+          rows.push(row);
+        }
+        
+        return rows;
+      }
+      
+      addLocalMessage(blockedName, reason, userName) {
+        const message = {
+          id: `local_${Date.now()}`,
+          blockedName: blockedName,
+          reason: reason,
+          timestamp: new Date(),
+          userName: userName,
+          source: 'local'
+        };
+        
+        this.localMessages.push(message);
+        this.saveLocalMessages();
+        
+        return message;
+      }
+      
+      startAutoUpdate(callback) {
+        if (this.updateInterval) {
+          clearInterval(this.updateInterval);
+        }
+        
+        this.updateInterval = setInterval(async () => {
+          try {
+            const messages = await this.loadFromGoogleSheet();
+            if (callback) callback(messages);
+          } catch (error) {
+            console.error('Auto-update error:', error);
+          }
+        }, 10000); // Update every 10 seconds
+      }
+      
+      stopAutoUpdate() {
+        if (this.updateInterval) {
+          clearInterval(this.updateInterval);
+        }
+      }
+    }
+    
+    // ============================================
+    // MAIN APPLICATION
+    // ============================================
+    class BlockedListApp {
+      constructor() {
+        this.user = null;
+        this.viewerCounter = new ViewerCounter();
+        this.messageManager = new MessageManager();
+        this.init();
+      }
+      
+      init() {
+        this.bindEvents();
+        this.checkUser();
+      }
+      
+      bindEvents() {
+        // Account
+        document.getElementById('create-account-btn').addEventListener('click', () => this.createAccount());
+        document.getElementById('user-name-input').addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') this.createAccount();
+        });
+        
+        document.getElementById('switch-account').addEventListener('click', () => {
+          if (confirm('Switch account?')) {
+            localStorage.removeItem(UserAccount.STORAGE_KEY);
+            this.user = null;
+            this.showAccountModal();
+          }
+        });
+        
+        // Form
+        document.getElementById('report-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          this.submitReport();
+        });
+        
+        // Chat
+        document.getElementById('view-chat-btn').addEventListener('click', () => this.openChat());
+        document.getElementById('close-chat').addEventListener('click', () => this.closeChat());
+        document.getElementById('start-report').addEventListener('click', () => this.closeChat());
+        document.getElementById('retry-chat').addEventListener('click', () => this.loadChat());
+        
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            this.closeChat();
+          }
+        });
+      }
+      
+      checkUser() {
+        this.user = UserAccount.get();
+        
+        if (!this.user) {
+          this.showAccountModal();
+        } else {
+          this.showMainApp();
+        }
+      }
+      
+      showAccountModal() {
+        document.getElementById('account-modal').style.display = 'flex';
+        document.getElementById('app-wrapper').classList.remove('active');
+        document.getElementById('user-name-input').focus();
+      }
+      
+      showMainApp() {
+        document.getElementById('account-modal').style.display = 'none';
+        document.getElementById('app-wrapper').classList.add('active');
+        this.updateUserProfile();
+        this.viewerCounter.start();
+        this.updateStats();
+        this.checkConnection();
+      }
+      
+      checkConnection() {
+        const connectionStatus = document.getElementById('connection-status');
+        const statusIcon = connectionStatus.querySelector('i');
+        const statusText = connectionStatus.querySelector('p');
+        
+        // Test connection to Google Sheets
+        fetch('https://docs.google.com/spreadsheets/d/1KKB-uxdVFvRSGHex192unt9D691Zh9SwUILXtD5Q7GM/export?format=csv')
+          .then(response => {
+            if (response.ok) {
+              connectionStatus.classList.remove('error');
+              connectionStatus.classList.add('success');
+              statusIcon.className = 'fas fa-check-circle mr-2';
+              statusIcon.style.color = '#28a745';
+              statusText.innerHTML = '✅ Connected to Blocked List';
+              statusText.style.color = '#155724';
+            } else {
+              throw new Error('Connection failed');
+            }
+          })
+          .catch(error => {
+            connectionStatus.classList.remove('success');
+            connectionStatus.classList.add('error');
+            statusIcon.className = 'fas fa-exclamation-triangle mr-2';
+            statusIcon.style.color = '#dc3545';
+            statusText.innerHTML = '⚠️ Connection issue - Working offline';
+            statusText.style.color = '#721c24';
+          });
+      }
+      
+      createAccount() {
+        const nameInput = document.getElementById('user-name-input');
+        const name = nameInput.value.trim();
+        
+        if (!name) {
+          this.showMessage('error-message', 'Please enter your name');
+          return;
+        }
+        
+        this.user = UserAccount.create(name);
+        this.showMainApp();
+      }
+      
+      updateUserProfile() {
+        if (!this.user) return;
+        
+        const initials = UserAccount.getInitials(this.user.name);
+        const color = this.user.color;
+        
+        document.getElementById('user-avatar').textContent = initials;
+        document.getElementById('user-avatar').style.background = color;
+        document.getElementById('display-name').textContent = this.user.name;
+        document.getElementById('your-reports').textContent = this.user.reports || 0;
+      }
+      
+      async submitReport() {
+        if (!this.user) {
+          this.showMessage('error-message', 'Please create an account first');
+          return;
+        }
+        
+        const blockedName = document.getElementById('blocked-name').value.trim();
+        const reason = document.getElementById('reason').value.trim();
+        
+        if (!blockedName) {
+          this.showMessage('error-message', 'Please enter a name');
+          return;
+        }
+        
+        // Show loading
+        const submitBtn = document.getElementById('submit-btn');
+        const submitText = submitBtn.querySelector('span');
+        const originalText = submitText.textContent;
+        submitText.textContent = 'Submitting...';
+        submitBtn.disabled = true;
+        
+        try {
+          // Create ISO timestamp for accurate time storage
+          const timestamp = new Date().toISOString();
+          
+          // Format notes with timestamp
+          const notes = reason + (reason ? ' | ' : '') + timestamp;
+          
+          // Submit to Google Forms
+          const formData = new FormData();
+          formData.append('entry.714302158', blockedName);
+          formData.append('entry.1541466423', notes);
+          
+          await fetch('https://docs.google.com/forms/d/e/1FAIpQLSfOzXT3fXroXRTYQ7J--pMWvpdJ_FPmXAvDNLS3z-UnYnti5g/formResponse', {
+            method: 'POST',
+            body: formData,
+            mode: 'no-cors'
+          });
+          
+          // Add to local messages for immediate display
+          const message = this.messageManager.addLocalMessage(
+            blockedName, 
+            reason, 
+            this.user.name
+          );
+          
+          // Update user stats
+          UserAccount.addReport();
+          this.user = UserAccount.get();
+          this.updateUserProfile();
+          
+          // Show success
+          this.showMessage('success-message', 'Success! Your report has been submitted.');
+          
+          // Clear form
+          document.getElementById('blocked-name').value = '';
+          document.getElementById('reason').value = '';
+          document.getElementById('blocked-name').focus();
+          
+          // Update chat if open
+          if (document.getElementById('chat-modal').classList.contains('active')) {
+            await this.loadChat();
+          }
+          
+          // Update stats
+          this.updateStats();
+          
+        } catch (error) {
+          console.error('Submission error:', error);
+          this.showMessage('error-message', 'Failed to submit. Please try again.');
+        } finally {
+          submitBtn.disabled = false;
+          const config = window.elementSdk?.config || defaultConfig;
+          submitText.textContent = config.submit_button_text || defaultConfig.submit_button_text;
+        }
+      }
+      
+      showMessage(elementId, text) {
+        const element = document.getElementById(elementId);
+        if (elementId === 'error-message') {
+          document.getElementById('error-text').textContent = text;
+        }
+        element.classList.remove('hidden');
+        
+        setTimeout(() => {
+          element.classList.add('hidden');
+        }, 5000);
+      }
+      
+      async updateStats() {
+        try {
+          const messages = await this.messageManager.loadFromGoogleSheet();
+          document.getElementById('total-reports').textContent = messages.length;
+        } catch (error) {
+          document.getElementById('total-reports').textContent = '0';
+        }
+      }
+      
+      async openChat() {
+        document.getElementById('chat-modal').classList.add('active');
+        await this.loadChat();
+        this.messageManager.startAutoUpdate((messages) => {
+          this.displayChat(messages);
+        });
+      }
+      
+      closeChat() {
+        document.getElementById('chat-modal').classList.remove('active');
+        this.messageManager.stopAutoUpdate();
+      }
+      
+      async loadChat() {
+        const loading = document.getElementById('chat-loading');
+        const empty = document.getElementById('chat-empty');
+        const error = document.getElementById('chat-error');
+        const messages = document.getElementById('chat-messages');
+        
+        loading.classList.remove('hidden');
+        empty.classList.add('hidden');
+        error.classList.add('hidden');
+        messages.classList.add('hidden');
+        
+        try {
+          const chatMessages = await this.messageManager.loadFromGoogleSheet();
+          
+          if (chatMessages.length === 0) {
+            loading.classList.add('hidden');
+            empty.classList.remove('hidden');
+          } else {
+            this.displayChat(chatMessages);
+            loading.classList.add('hidden');
+            messages.classList.remove('hidden');
+          }
+          
+          // Update chat stats
+          document.getElementById('chat-stats').textContent = 
+            `${chatMessages.length} report${chatMessages.length !== 1 ? 's' : ''}`;
+            
+        } catch (error) {
+          console.error('Chat load error:', error);
+          loading.classList.add('hidden');
+          error.classList.remove('hidden');
+        }
+      }
+      
+      displayChat(messages) {
+        const container = document.getElementById('chat-messages');
+        container.innerHTML = '';
+        
+        // Get current config for colors
+        const config = window.elementSdk?.config || defaultConfig;
+        const sentMsgStart = config.sent_message_gradient_start || defaultConfig.sent_message_gradient_start;
+        const sentMsgEnd = config.sent_message_gradient_end || defaultConfig.sent_message_gradient_end;
+        const receivedMsgColor = config.received_message_color || defaultConfig.received_message_color;
+        
+        // Display messages (newest at bottom)
+        messages.forEach((msg, index) => {
+          const messageEl = document.createElement('div');
+          
+          // Determine if this is current user's message
+          const isCurrentUser = msg.userName === this.user?.name || msg.source === 'local';
+          
+          // Get user info
+          const userName = msg.userName || 'Anonymous';
+          const userColor = UserAccount.generateColor(userName);
+          const userInitials = UserAccount.getInitials(userName);
+          
+          messageEl.className = `message ${isCurrentUser ? 'sent slide-up' : 'slide-up'}`;
+          messageEl.style.animationDelay = `${index * 0.05}s`;
+          
+          // Format timestamp - PROPERLY FORMATTED
+          const timeString = msg.timestamp.toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+          }).toLowerCase();
+          
+          const dateString = msg.timestamp.toLocaleDateString([], {
+            month: 'short',
+            day: 'numeric',
+            year: msg.timestamp.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+          }).replace(',', '');
+          
+          // Apply dynamic colors
+          const bubbleStyle = isCurrentUser 
+            ? `background: linear-gradient(135deg, ${sentMsgStart} 0%, ${sentMsgEnd} 100%); color: white;`
+            : `background-color: ${receivedMsgColor}; border: 1px solid #e5e5ea;`;
+          
+          messageEl.innerHTML = `
+            <div class="message-avatar" style="background: ${userColor}">
+              ${userInitials}
+            </div>
+            <div class="message-bubble" style="${bubbleStyle}">
+              <div class="message-sender">
+                <i class="fas fa-user"></i>
+                ${userName}
+              </div>
+              
+              <div class="blocked-info">
+                <div class="blocked-name">${this.escapeHtml(msg.blockedName)}</div>
+                ${msg.reason ? `
+                <div class="blocked-reason">${this.escapeHtml(msg.reason)}</div>
+                ` : ''}
+              </div>
+              
+              <div class="message-timestamp">
+                ${timeString} • ${dateString}
+              </div>
+            </div>
+          `;
+          
+          container.appendChild(messageEl);
+        });
+        
+        // Scroll to bottom to see latest messages
+        setTimeout(() => {
+          container.scrollTop = container.scrollHeight;
+        }, 100);
+      }
+      
+      escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+    }
+    
+    // ============================================
+    // INITIALIZE APP
+    // ============================================
+    // Prevent unwanted scrolling
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    
+    // Initialize app
+    window.addEventListener('DOMContentLoaded', () => {
+      window.blockedListApp = new BlockedListApp();
+    });
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9bd32aa637f55bc5',t:'MTc2ODI4OTE5OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
