@@ -214,11 +214,11 @@
       line-height: 1.4;
     }
     
-    /* TIMESTAMP - FIXED POSITION */
+    /* FIXED TIMESTAMP STYLES - CORRECTED */
     .message-timestamp {
       position: absolute;
-      bottom: -18px;
-      right: 8px;
+      bottom: 4px;
+      right: 12px;
       font-size: 10px;
       color: #666;
       white-space: nowrap;
@@ -226,13 +226,14 @@
       padding: 2px 6px;
       border-radius: 10px;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      z-index: 2;
     }
     
     .message.sent .message-timestamp {
       right: auto;
-      left: 8px;
-      color: rgba(255, 255, 255, 0.8);
-      background: rgba(0, 0, 0, 0.2);
+      left: 12px;
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(0, 0, 0, 0.3);
     }
     
     /* Blocked info */
@@ -242,6 +243,8 @@
       border-radius: 12px;
       margin-top: 8px;
       border-left: 3px solid #dc2626;
+      position: relative;
+      padding-bottom: 24px; /* Add space for timestamp */
     }
     
     .blocked-name {
@@ -254,6 +257,20 @@
       font-size: 13px;
       color: #7f1d1d;
       margin-top: 4px;
+    }
+    
+    /* Move timestamp inside blocked-info for proper positioning */
+    .blocked-info .message-timestamp {
+      bottom: 4px;
+      right: 8px;
+      font-size: 9px;
+    }
+    
+    .message.sent .blocked-info .message-timestamp {
+      right: auto;
+      left: 8px;
+      color: rgba(255, 255, 255, 0.8);
+      background: rgba(0, 0, 0, 0.2);
     }
     
     /* Account modal */
@@ -1046,12 +1063,12 @@
           messageEl.className = `message ${isCurrentUser ? 'sent slide-up' : 'slide-up'}`;
           messageEl.style.animationDelay = `${index * 0.05}s`;
           
-          // Format timestamp - ALWAYS SHOW ACTUAL SENT TIME
+          // Format timestamp - PROPERLY FORMATTED
           const timeString = msg.timestamp.toLocaleTimeString([], { 
             hour: '2-digit', 
             minute: '2-digit',
             hour12: true 
-          });
+          }).toLowerCase();
           
           const dateString = msg.timestamp.toLocaleDateString([], {
             month: 'short',
@@ -1074,10 +1091,9 @@
                 ${msg.reason ? `
                 <div class="blocked-reason">${this.escapeHtml(msg.reason)}</div>
                 ` : ''}
-              </div>
-              
-              <div class="message-timestamp">
-                ${timeString} • ${dateString}
+                <div class="message-timestamp">
+                  ${timeString} • ${dateString}
+                </div>
               </div>
             </div>
           `;
