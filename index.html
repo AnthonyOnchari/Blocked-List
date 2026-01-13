@@ -28,9 +28,35 @@
       animation: fadeIn 0.4s ease-out forwards;
     }
     
-    .submit-btn:disabled {
+    .submit-btn:disabled,
+    .view-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
+    }
+    
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 1.5rem;
+      max-width: 800px;
+      width: 100%;
+      max-height: 80vh;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     }
   </style>
   <style>@view-transition { navigation: auto; }</style>
@@ -39,134 +65,169 @@
  <body class="h-full">
   <div id="app-wrapper" class="h-full w-full overflow-auto" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
    <div class="min-h-full w-full flex flex-col items-center justify-center py-12 px-4">
-    <div class="w-full max-w-lg"><!-- Form Card -->
-     <div class="rounded-3xl p-8 shadow-2xl" style="background-color: #ffffff;"><!-- Header -->
+    <div class="w-full max-w-lg">
+     <!-- Form Card -->
+     <div class="rounded-3xl p-8 shadow-2xl" style="background-color: #ffffff;">
+      <!-- Header -->
       <div class="text-center mb-8">
        <h1 id="form-title" class="text-3xl font-bold mb-3" style="color: #2d3748;">Blocked List</h1>
        <p id="form-description" class="text-base" style="color: #718096;">Fill out the form below to add the blocked one to the list</p>
-      </div><!-- Connection Status -->
+      </div>
+      
+      <!-- Connection Status -->
       <div class="mb-6 p-4 rounded-xl" style="background-color: #d4edda; border-left: 4px solid #28a745;">
        <div class="flex items-center">
-        <svg class="h-5 w-5 mr-2" style="color: #28a745;" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg class="h-5 w-5 mr-2" style="color: #28a745;" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p class="text-sm font-semibold" style="color: #155724;">✅ Tonnie / Slimkanono Came up with this</p>
        </div>
-      </div><!-- Form -->
+      </div>
+      
+      <!-- Form -->
       <form id="submission-form" class="space-y-5">
-       <div><label for="name-input" class="block text-sm font-semibold mb-2" style="color: #2d3748;">Blocked Person *</label> <input type="text" id="name-input" name="name" required placeholder="Enter your full name..." class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all" style="border-color: #e2e8f0; color: #2d3748;">
+       <div>
+        <label for="name-input" class="block text-sm font-semibold mb-2" style="color: #2d3748;">Blocked Person *</label>
+        <input type="text" id="name-input" name="name" required placeholder="Enter your full name..." class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all" style="border-color: #e2e8f0; color: #2d3748;">
        </div>
       
-       <div><label for="notes-input" class="block text-sm font-semibold mb-2" style="color: #2d3748;">Business / Notes (optional)</label> <textarea id="notes-input" name="notes" rows="3" placeholder="Add any additional information..." class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all resize-none" style="border-color: #e2e8f0; color: #2d3748;"></textarea>
-       </div><button type="submit" id="submit-btn" class="submit-btn w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"> <span id="submit-text">Submit</span> </button>
-      </form><!-- Success Message -->
+       <div>
+        <label for="notes-input" class="block text-sm font-semibold mb-2" style="color: #2d3748;">Business / Notes (optional)</label>
+        <textarea id="notes-input" name="notes" rows="3" placeholder="Add any additional information..." class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all resize-none" style="border-color: #e2e8f0; color: #2d3748;"></textarea>
+       </div>
+       
+       <!-- Action Buttons -->
+       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <button type="submit" id="submit-btn" class="submit-btn w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+         <span id="submit-text">Submit</span>
+        </button>
+        
+        <button type="button" id="view-list-btn" class="view-btn w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
+         <span id="view-text">View List</span>
+        </button>
+       </div>
+      </form>
+      
+      <!-- Success Message -->
       <div id="success-message" class="hidden mt-6 p-4 rounded-xl fade-in" style="background-color: #d4edda; border-left: 4px solid #28a745;">
        <div class="flex items-center">
-        <svg class="h-6 w-6 mr-2" style="color: #28a745;" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg class="h-6 w-6 mr-2" style="color: #28a745;" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p class="font-semibold" style="color: #155724;">Success! Your name has been submitted.</p>
        </div>
-      </div><!-- Error Message -->
+      </div>
+      
+      <!-- Error Message -->
       <div id="error-message" class="hidden mt-6 p-4 rounded-xl fade-in" style="background-color: #f8d7da; border-left: 4px solid #dc3545;">
        <div class="flex items-center">
-        <svg class="h-6 w-6 mr-2" style="color: #dc3545;" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg class="h-6 w-6 mr-2" style="color: #dc3545;" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p class="font-semibold" style="color: #721c24;" id="error-text">Something went wrong. Please try again.</p>
        </div>
       </div>
-     </div><!-- Footer Note -->
+     </div>
+     
+     <!-- Footer Note -->
      <p class="text-center mt-6 text-sm text-white opacity-90">All submissions are saved to Admin's</p>
     </div>
    </div>
   </div>
+
+  <!-- Modal for displaying the list -->
+  <div id="list-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="p-6">
+        <!-- Modal Header -->
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold" style="color: #2d3748;">Blocked List</h2>
+          <button id="close-modal" class="text-gray-500 hover:text-gray-700 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="loading-state" class="text-center py-8">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2" style="border-color: #667eea;"></div>
+          <p class="mt-2" style="color: #718096;">Loading list...</p>
+        </div>
+        
+        <!-- List Container -->
+        <div id="list-container" class="hidden overflow-y-auto max-h-[60vh]">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="border-b-2" style="border-color: #e2e8f0;">
+                <th class="text-left py-3 px-4 font-semibold" style="color: #2d3748;">Name</th>
+                <th class="text-left py-3 px-4 font-semibold" style="color: #2d3748;">Notes</th>
+                <th class="text-left py-3 px-4 font-semibold" style="color: #2d3748;">Date</th>
+              </tr>
+            </thead>
+            <tbody id="list-body">
+              <!-- List items will be populated here -->
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Error State -->
+        <div id="list-error" class="hidden text-center py-8">
+          <svg class="w-12 h-12 mx-auto mb-4" style="color: #dc3545;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="font-semibold" style="color: #721c24;" id="list-error-text">Failed to load list</p>
+          <button id="retry-load" class="mt-4 px-6 py-2 rounded-lg font-medium transition-all hover:scale-105" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Default configuration
     const defaultConfig = {
       form_title: 'Submit Your Name',
       form_description: 'Fill out the form below to add your name to the list',
       submit_button_text: 'Submit',
+      view_button_text: 'View List',
       background_gradient_start: '#667eea',
       background_gradient_end: '#764ba2',
       card_background: '#ffffff',
       text_color: '#2d3748',
       secondary_text_color: '#718096',
       button_gradient_start: '#667eea',
-      button_gradient_end: '#764ba2'
+      button_gradient_end: '#764ba2',
+      view_button_gradient_start: '#4CAF50',
+      view_button_gradient_end: '#45a049'
     };
 
     // DOM Elements
     const formTitle = document.getElementById('form-title');
     const formDescription = document.getElementById('form-description');
     const submitText = document.getElementById('submit-text');
+    const viewText = document.getElementById('view-text');
     const submissionForm = document.getElementById('submission-form');
     const submitBtn = document.getElementById('submit-btn');
+    const viewListBtn = document.getElementById('view-list-btn');
     const successMessage = document.getElementById('success-message');
     const errorMessage = document.getElementById('error-message');
     const errorText = document.getElementById('error-text');
     const appWrapper = document.getElementById('app-wrapper');
+    const listModal = document.getElementById('list-modal');
+    const closeModal = document.getElementById('close-modal');
+    const loadingState = document.getElementById('loading-state');
+    const listContainer = document.getElementById('list-container');
+    const listBody = document.getElementById('list-body');
+    const listError = document.getElementById('list-error');
+    const listErrorText = document.getElementById('list-error-text');
+    const retryLoad = document.getElementById('retry-load');
 
-    // Element SDK initialization
-    const elementHandler = {
-      defaultConfig,
-      onConfigChange: async (config) => {
-        // Update text content
-        formTitle.textContent = config.form_title || defaultConfig.form_title;
-        formDescription.textContent = config.form_description || defaultConfig.form_description;
-        submitText.textContent = config.submit_button_text || defaultConfig.submit_button_text;
-        
-        // Update colors
-        const bgGradStart = config.background_gradient_start || defaultConfig.background_gradient_start;
-        const bgGradEnd = config.background_gradient_end || defaultConfig.background_gradient_end;
-        const cardBg = config.card_background || defaultConfig.card_background;
-        const textColor = config.text_color || defaultConfig.text_color;
-        const secondaryText = config.secondary_text_color || defaultConfig.secondary_text_color;
-        const btnGradStart = config.button_gradient_start || defaultConfig.button_gradient_start;
-        const btnGradEnd = config.button_gradient_end || defaultConfig.button_gradient_end;
-        
-        appWrapper.style.background = `linear-gradient(135deg, ${bgGradStart} 0%, ${bgGradEnd} 100%)`;
-        document.querySelector('.rounded-3xl').style.backgroundColor = cardBg;
-        
-        formTitle.style.color = textColor;
-        formDescription.style.color = secondaryText;
-        
-        document.querySelectorAll('label').forEach(el => {
-          el.style.color = textColor;
-        });
-        
-        submitBtn.style.background = `linear-gradient(135deg, ${btnGradStart} 0%, ${btnGradEnd} 100%)`;
-      },
-      mapToCapabilities: (config) => ({
-        recolorables: [
-          {
-            get: () => config.background_gradient_start || defaultConfig.background_gradient_start,
-            set: (value) => window.elementSdk.setConfig({ background_gradient_start: value })
-          },
-          {
-            get: () => config.card_background || defaultConfig.card_background,
-            set: (value) => window.elementSdk.setConfig({ card_background: value })
-          },
-          {
-            get: () => config.text_color || defaultConfig.text_color,
-            set: (value) => window.elementSdk.setConfig({ text_color: value })
-          },
-          {
-            get: () => config.button_gradient_start || defaultConfig.button_gradient_start,
-            set: (value) => window.elementSdk.setConfig({ button_gradient_start: value })
-          },
-          {
-            get: () => config.secondary_text_color || defaultConfig.secondary_text_color,
-            set: (value) => window.elementSdk.setConfig({ secondary_text_color: value })
-          }
-        ],
-        borderables: [],
-        fontEditable: undefined,
-        fontSizeable: undefined
-      }),
-      mapToEditPanelValues: (config) => new Map([
-        ['form_title', config.form_title || defaultConfig.form_title],
-        ['form_description', config.form_description || defaultConfig.form_description],
-        ['submit_button_text', config.submit_button_text || defaultConfig.submit_button_text]
-      ])
-    };
+    // Google Sheets configuration
+    const SHEET_ID = '1KKB-uxdVFvRSGHex192unt9D691Zh9SwUILXtD5Q7GM';
+    const SHEET_NAME = 'Sheet1'; // Change if your sheet has a different name
+    const API_KEY = ''; // You'll need to add your Google API key here
 
     // Hide messages
     function hideMessages() {
@@ -195,11 +256,10 @@
       e.preventDefault();
       
       const nameInput = document.getElementById('name-input');
-      const emailInput = document.getElementById('email-input');
       const notesInput = document.getElementById('notes-input');
       
       if (!nameInput.value.trim()) {
-        showError('Please enter your name');
+        showError('Please enter a name');
         return;
       }
       
@@ -212,10 +272,9 @@
         // Google Form endpoint
         const FORM_ACTION_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfOzXT3fXroXRTYQ7J--pMWvpdJ_FPmXAvDNLS3z-UnYnti5g/formResponse';
         
-        // Create form data with your Google Form field IDs
+        // Create form data with Google Form field IDs
         const formData = new FormData();
         formData.append('entry.714302158', nameInput.value.trim());  // Name field
-        formData.append('entry.505087478', emailInput.value.trim());  // Email field
         formData.append('entry.1541466423', notesInput.value.trim()); // Notes field
         
         // Submit to Google Forms
@@ -239,10 +298,156 @@
       }
     });
 
+    // Function to fetch data from Google Sheets
+    async function fetchSheetData() {
+      try {
+        loadingState.classList.remove('hidden');
+        listContainer.classList.add('hidden');
+        listError.classList.add('hidden');
+        
+        // If you have an API key, use this URL:
+        // const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}?key=${API_KEY}`;
+        
+        // For public sheet (no API key needed):
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&tq&gid=0`;
+        
+        const response = await fetch(url);
+        const text = await response.text();
+        
+        // Parse the Google Sheets JSON response
+        const json = JSON.parse(text.substring(47).slice(0, -2));
+        const rows = json.table.rows;
+        
+        // Clear previous data
+        listBody.innerHTML = '';
+        
+        // Populate table
+        rows.forEach((row, index) => {
+          // Skip header row if needed
+          if (index === 0 && row.c[0]?.v === 'Name') return;
+          
+          const tr = document.createElement('tr');
+          tr.className = index % 2 === 0 ? 'bg-gray-50' : 'bg-white';
+          tr.innerHTML = `
+            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748;">${row.c[0]?.v || ''}</td>
+            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748;">${row.c[1]?.v || ''}</td>
+            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748;">${row.c[2]?.v || ''}</td>
+          `;
+          listBody.appendChild(tr);
+        });
+        
+        loadingState.classList.add('hidden');
+        listContainer.classList.remove('hidden');
+        
+      } catch (error) {
+        console.error('Error fetching sheet data:', error);
+        loadingState.classList.add('hidden');
+        listErrorText.textContent = 'Failed to load list. Please try again.';
+        listError.classList.remove('hidden');
+      }
+    }
+
+    // Open modal and load data
+    viewListBtn.addEventListener('click', async () => {
+      listModal.classList.remove('hidden');
+      await fetchSheetData();
+    });
+
+    // Close modal
+    closeModal.addEventListener('click', () => {
+      listModal.classList.add('hidden');
+    });
+
+    // Close modal when clicking outside
+    listModal.addEventListener('click', (e) => {
+      if (e.target === listModal) {
+        listModal.classList.add('hidden');
+      }
+    });
+
+    // Retry loading data
+    retryLoad.addEventListener('click', fetchSheetData);
+
+    // Element SDK initialization
+    const elementHandler = {
+      defaultConfig,
+      onConfigChange: async (config) => {
+        // Update text content
+        formTitle.textContent = config.form_title || defaultConfig.form_title;
+        formDescription.textContent = config.form_description || defaultConfig.form_description;
+        submitText.textContent = config.submit_button_text || defaultConfig.submit_button_text;
+        viewText.textContent = config.view_button_text || defaultConfig.view_button_text;
+        
+        // Update colors
+        const bgGradStart = config.background_gradient_start || defaultConfig.background_gradient_start;
+        const bgGradEnd = config.background_gradient_end || defaultConfig.background_gradient_end;
+        const cardBg = config.card_background || defaultConfig.card_background;
+        const textColor = config.text_color || defaultConfig.text_color;
+        const secondaryText = config.secondary_text_color || defaultConfig.secondary_text_color;
+        const btnGradStart = config.button_gradient_start || defaultConfig.button_gradient_start;
+        const btnGradEnd = config.button_gradient_end || defaultConfig.button_gradient_end;
+        const viewBtnGradStart = config.view_button_gradient_start || defaultConfig.view_button_gradient_start;
+        const viewBtnGradEnd = config.view_button_gradient_end || defaultConfig.view_button_gradient_end;
+        
+        appWrapper.style.background = `linear-gradient(135deg, ${bgGradStart} 0%, ${bgGradEnd} 100%)`;
+        document.querySelector('.rounded-3xl').style.backgroundColor = cardBg;
+        
+        formTitle.style.color = textColor;
+        formDescription.style.color = secondaryText;
+        
+        document.querySelectorAll('label').forEach(el => {
+          el.style.color = textColor;
+        });
+        
+        submitBtn.style.background = `linear-gradient(135deg, ${btnGradStart} 0%, ${btnGradEnd} 100%)`;
+        viewListBtn.style.background = `linear-gradient(135deg, ${viewBtnGradStart} 0%, ${viewBtnGradEnd} 100%)`;
+        
+        // Update modal colors
+        document.querySelector('#list-modal h2').style.color = textColor;
+      },
+      mapToCapabilities: (config) => ({
+        recolorables: [
+          {
+            get: () => config.background_gradient_start || defaultConfig.background_gradient_start,
+            set: (value) => window.elementSdk.setConfig({ background_gradient_start: value })
+          },
+          {
+            get: () => config.card_background || defaultConfig.card_background,
+            set: (value) => window.elementSdk.setConfig({ card_background: value })
+          },
+          {
+            get: () => config.text_color || defaultConfig.text_color,
+            set: (value) => window.elementSdk.setConfig({ text_color: value })
+          },
+          {
+            get: () => config.button_gradient_start || defaultConfig.button_gradient_start,
+            set: (value) => window.elementSdk.setConfig({ button_gradient_start: value })
+          },
+          {
+            get: () => config.secondary_text_color || defaultConfig.secondary_text_color,
+            set: (value) => window.elementSdk.setConfig({ secondary_text_color: value })
+          },
+          {
+            get: () => config.view_button_gradient_start || defaultConfig.view_button_gradient_start,
+            set: (value) => window.elementSdk.setConfig({ view_button_gradient_start: value })
+          }
+        ],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+      }),
+      mapToEditPanelValues: (config) => new Map([
+        ['form_title', config.form_title || defaultConfig.form_title],
+        ['form_description', config.form_description || defaultConfig.form_description],
+        ['submit_button_text', config.submit_button_text || defaultConfig.submit_button_text],
+        ['view_button_text', config.view_button_text || defaultConfig.view_button_text]
+      ])
+    };
+
     // Initialize Element SDK
     if (window.elementSdk) {
       window.elementSdk.init(elementHandler);
     }
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9bd32aa637f55bc5',t:'MTc2ODI4OTE5OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ </body>
 </html>
