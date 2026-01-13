@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Name Submission Form</title>
+  <title>Blocked List Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/_sdk/element_sdk.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
@@ -79,8 +79,8 @@
     }
     
     .chat-avatar {
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       object-fit: cover;
       flex-shrink: 0;
@@ -109,7 +109,7 @@
     }
     
     .chat-sender {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
       margin-bottom: 6px;
       display: flex;
@@ -164,102 +164,206 @@
       border-top: 1px solid rgba(220, 38, 38, 0.2);
     }
     
-    /* Form styles for submitter info */
-    .submitter-section {
+    /* Account Modal Styles */
+    .account-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 20px;
+    }
+    
+    .account-card {
+      background: white;
+      border-radius: 1.5rem;
+      max-width: 400px;
+      width: 100%;
+      padding: 32px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      text-align: center;
+    }
+    
+    .avatar-preview {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin: 0 auto 20px;
+      object-fit: cover;
+      border: 4px solid #667eea;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .avatar-preview:hover {
+      transform: scale(1.05);
+    }
+    
+    /* User profile in form */
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
       background-color: #f8fafc;
-      padding: 16px;
       border-radius: 12px;
       margin-bottom: 16px;
       border: 1px solid #e2e8f0;
     }
     
-    .submitter-section-title {
-      font-size: 14px;
+    .user-profile-img {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #667eea;
+    }
+    
+    .user-profile-info {
+      flex: 1;
+    }
+    
+    .user-profile-name {
       font-weight: 600;
-      color: #4b5563;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      color: #2d3748;
+      margin-bottom: 2px;
+    }
+    
+    .user-profile-status {
+      font-size: 12px;
+      color: #718096;
+    }
+    
+    .change-account-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .change-account-btn:hover {
+      transform: scale(1.05);
     }
   </style>
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
 </head>
 <body class="h-full">
-  <div id="app-wrapper" class="h-full w-full overflow-auto" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+  <!-- Account Setup Modal (Shows first if no account) -->
+  <div id="account-modal" class="account-modal hidden">
+    <div class="account-card">
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold mb-2" style="color: #2d3748;">Create Your Account</h2>
+        <p class="text-sm" style="color: #718096;">Set up your profile once, then start adding to the blocked list</p>
+      </div>
+      
+      <!-- Avatar Preview -->
+      <div class="mb-6">
+        <img id="avatar-preview" src="https://ui-avatars.com/api/?name=User&background=667eea&color=fff&size=160" 
+             alt="Profile Preview" class="avatar-preview">
+        <input type="file" id="avatar-upload" accept="image/*" class="hidden">
+        <p class="text-xs mt-2" style="color: #718096;">Click to upload photo or we'll use initials</p>
+      </div>
+      
+      <!-- Account Form -->
+      <form id="account-form" class="space-y-4">
+        <div>
+          <label for="account-name" class="block text-sm font-semibold mb-2 text-left" style="color: #2d3748;">
+            Your Name <span class="text-red-500">*</span>
+          </label>
+          <input type="text" id="account-name" required 
+                 placeholder="Enter your name..."
+                 class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                 style="border-color: #e2e8f0; color: #2d3748;">
+        </div>
+        
+        <div>
+          <label for="account-username" class="block text-sm font-semibold mb-2 text-left" style="color: #2d3748;">
+            Username (Optional)
+          </label>
+          <input type="text" id="account-username" 
+                 placeholder="@username"
+                 class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                 style="border-color: #e2e8f0; color: #2d3748;">
+          <p class="text-xs mt-1 text-left" style="color: #718096;">Used to identify you in the chat</p>
+        </div>
+        
+        <button type="submit" class="w-full py-3 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" 
+                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+          Create Account & Continue
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main App (Shows after account setup) -->
+  <div id="app-wrapper" class="h-full w-full overflow-auto hidden" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
     <div class="min-h-full w-full flex flex-col items-center justify-center py-12 px-4">
       <div class="w-full max-w-lg">
         <!-- Form Card -->
         <div class="rounded-3xl p-8 shadow-2xl" style="background-color: #ffffff;">
+          <!-- User Profile Display -->
+          <div id="user-profile-display" class="user-profile">
+            <img id="current-user-avatar" class="user-profile-img" 
+                 src="https://ui-avatars.com/api/?name=User&background=667eea&color=fff&size=100" 
+                 alt="Your Avatar">
+            <div class="user-profile-info">
+              <div id="current-user-name" class="user-profile-name">Loading...</div>
+              <div class="user-profile-status">Ready to add to blocked list</div>
+            </div>
+            <button type="button" id="change-account-btn" class="change-account-btn">
+              Switch Account
+            </button>
+          </div>
+          
           <!-- Header -->
           <div class="text-center mb-8">
-            <h1 id="form-title" class="text-3xl font-bold mb-3" style="color: #2d3748;">Blocked List</h1>
-            <p id="form-description" class="text-base" style="color: #718096;">Fill out the form below to add the blocked one to the list</p>
+            <h1 id="form-title" class="text-3xl font-bold mb-3" style="color: #2d3748;">Blocked List Chat</h1>
+            <p id="form-description" class="text-base" style="color: #718096;">Add someone to the blocked list</p>
           </div>
           
           <!-- Form -->
           <form id="submission-form" class="space-y-5">
-            <!-- Submitter Info Section -->
-            <div class="submitter-section">
-              <div class="submitter-section-title">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                Your Information
-              </div>
-              
-              <div class="space-y-4">
-                <div>
-                  <label for="submitter-name" class="block text-sm font-semibold mb-2" style="color: #2d3748;">
-                    Your Name <span class="text-red-500">*</span>
-                  </label>
-                  <input type="text" id="submitter-name" name="submitterName" required 
-                         placeholder="Enter your name..."
-                         class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
-                         style="border-color: #e2e8f0; color: #2d3748;">
-                </div>
-                
-                <div>
-                  <label for="submitter-avatar" class="block text-sm font-semibold mb-2" style="color: #2d3748;">
-                    Your Profile Picture (Initials will be used if left blank)
-                  </label>
-                  <input type="url" id="submitter-avatar" name="submitterAvatar"
-                         placeholder="https://example.com/your-photo.jpg"
-                         class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
-                         style="border-color: #e2e8f0; color: #2d3748;">
-                  <p class="text-xs mt-1" style="color: #718096;">Optional - Paste a direct image URL</p>
-                </div>
-              </div>
-            </div>
-            
             <!-- Blocked Person Info -->
             <div>
               <label for="name-input" class="block text-sm font-semibold mb-2" style="color: #2d3748;">
                 Blocked Person <span class="text-red-500">*</span>
               </label>
-              <input type="text" id="name-input" name="name" required placeholder="Enter the name of the blocked person..." 
+              <input type="text" id="name-input" name="name" required 
+                     placeholder="Enter the name of the blocked person..." 
                      class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all" 
                      style="border-color: #e2e8f0; color: #2d3748;">
             </div>
             
             <div>
               <label for="notes-input" class="block text-sm font-semibold mb-2" style="color: #2d3748;">
-                Business / Notes (optional)
+                Reason / Notes (optional)
               </label>
-              <textarea id="notes-input" name="notes" rows="3" placeholder="Add any additional information about why this person is blocked..." 
+              <textarea id="notes-input" name="notes" rows="3" 
+                        placeholder="Why is this person being blocked?..." 
                         class="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all resize-none" 
                         style="border-color: #e2e8f0; color: #2d3748;"></textarea>
             </div>
             
             <!-- Action Buttons -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button type="submit" id="submit-btn" class="submit-btn w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <span id="submit-text">Submit</span>
+              <button type="submit" id="submit-btn" class="submit-btn w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" 
+                      style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <span id="submit-text">Add to List</span>
               </button>
               
-              <button type="button" id="view-list-btn" class="view-btn w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
-                <span id="view-text">View List</span>
+              <button type="button" id="view-list-btn" class="view-btn w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 shadow-lg" 
+                      style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
+                <span id="view-text">View Chat</span>
               </button>
             </div>
           </form>
@@ -270,7 +374,7 @@
               <svg class="h-6 w-6 mr-2" style="color: #28a745;" fill="none" viewbox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p class="font-semibold" style="color: #155724;">Success! Entry has been submitted.</p>
+              <p class="font-semibold" style="color: #155724;">Added to blocked list!</p>
             </div>
           </div>
           
@@ -291,13 +395,24 @@
     </div>
   </div>
 
-  <!-- Modal for displaying the list -->
+  <!-- Chat Modal -->
   <div id="list-modal" class="modal-overlay hidden">
     <div class="modal-content">
       <div class="p-6">
         <!-- Modal Header -->
         <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold" style="color: #2d3748;">Blocked List Chat</h2>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center" 
+                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-xl font-bold" style="color: #2d3748;">Blocked List Chat</h2>
+              <p class="text-sm" style="color: #718096;">Community warnings & reports</p>
+            </div>
+          </div>
           <button id="close-modal" class="text-gray-500 hover:text-gray-700 transition-colors">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -308,10 +423,10 @@
         <!-- Loading State -->
         <div id="loading-state" class="text-center py-8">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2" style="border-color: #667eea;"></div>
-          <p class="mt-2" style="color: #718096;">Loading chat...</p>
+          <p class="mt-2" style="color: #718096;">Loading chat messages...</p>
         </div>
         
-        <!-- List Container -->
+        <!-- Chat Container -->
         <div id="list-container" class="hidden">
           <div class="chat-container" id="list-body">
             <!-- Chat messages will be populated here -->
@@ -320,10 +435,10 @@
           <!-- No Data Message -->
           <div id="no-data" class="hidden text-center py-8">
             <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <p class="text-lg" style="color: #718096;">No entries in the blocked list yet.</p>
-            <p class="text-sm mt-2" style="color: #a0aec0;">Be the first to add someone!</p>
+            <p class="text-lg" style="color: #718096;">No messages in the chat yet</p>
+            <p class="text-sm mt-2" style="color: #a0aec0;">Be the first to warn the community!</p>
           </div>
         </div>
         
@@ -333,7 +448,8 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           <p class="font-semibold" style="color: #721c24;" id="list-error-text">Failed to load chat</p>
-          <button id="retry-load" class="mt-4 px-6 py-2 rounded-lg font-medium transition-all hover:scale-105" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+          <button id="retry-load" class="mt-4 px-6 py-2 rounded-lg font-medium transition-all hover:scale-105" 
+                  style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
             Retry
           </button>
         </div>
@@ -342,12 +458,94 @@
   </div>
 
   <script>
+    // Account Management System
+    class UserAccount {
+      static STORAGE_KEY = 'blockedListUserAccount';
+      
+      static createAccount(name, username = '', avatarUrl = '') {
+        const account = {
+          id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+          name: name.trim(),
+          username: username.trim(),
+          avatarUrl: avatarUrl.trim(),
+          createdAt: new Date().toISOString(),
+          lastActive: new Date().toISOString()
+        };
+        
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(account));
+        return account;
+      }
+      
+      static getAccount() {
+        const data = localStorage.getItem(this.STORAGE_KEY);
+        if (!data) return null;
+        
+        try {
+          return JSON.parse(data);
+        } catch (e) {
+          return null;
+        }
+      }
+      
+      static updateAccount(updates) {
+        const account = this.getAccount();
+        if (!account) return null;
+        
+        const updatedAccount = { ...account, ...updates, lastActive: new Date().toISOString() };
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAccount));
+        return updatedAccount;
+      }
+      
+      static deleteAccount() {
+        localStorage.removeItem(this.STORAGE_KEY);
+      }
+      
+      static getDisplayName(account) {
+        if (!account) return 'Anonymous';
+        if (account.username) return `@${account.username}`;
+        return account.name;
+      }
+      
+      static getAvatarUrl(account) {
+        if (!account) return this.generateDefaultAvatar('Anonymous');
+        
+        if (account.avatarUrl && account.avatarUrl.startsWith('http')) {
+          return account.avatarUrl;
+        }
+        
+        return this.generateDefaultAvatar(account.name);
+      }
+      
+      static generateDefaultAvatar(name) {
+        const initials = name
+          .split(' ')
+          .map(word => word[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+        
+        // Generate consistent color based on name
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        const colors = [
+          '667eea', '764ba2', 'f56565', 'ed8936', 'ecc94b',
+          '48bb78', '38b2ac', '4299e1', '9f7aea', 'ed64a6'
+        ];
+        const colorIndex = Math.abs(hash) % colors.length;
+        
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${colors[colorIndex]}&color=fff&size=200`;
+      }
+    }
+
     // Default configuration
     const defaultConfig = {
-      form_title: 'Blocked List',
-      form_description: 'Fill out the form below to add the blocked one to the list',
-      submit_button_text: 'Submit',
-      view_button_text: 'View List',
+      form_title: 'Blocked List Chat',
+      form_description: 'Add someone to the blocked list',
+      submit_button_text: 'Add to List',
+      view_button_text: 'View Chat',
       background_gradient_start: '#667eea',
       background_gradient_end: '#764ba2',
       card_background: '#ffffff',
@@ -360,6 +558,14 @@
     };
 
     // DOM Elements
+    const accountModal = document.getElementById('account-modal');
+    const appWrapper = document.getElementById('app-wrapper');
+    const avatarPreview = document.getElementById('avatar-preview');
+    const avatarUpload = document.getElementById('avatar-upload');
+    const accountForm = document.getElementById('account-form');
+    const currentUserAvatar = document.getElementById('current-user-avatar');
+    const currentUserName = document.getElementById('current-user-name');
+    const changeAccountBtn = document.getElementById('change-account-btn');
     const formTitle = document.getElementById('form-title');
     const formDescription = document.getElementById('form-description');
     const submitText = document.getElementById('submit-text');
@@ -370,7 +576,6 @@
     const successMessage = document.getElementById('success-message');
     const errorMessage = document.getElementById('error-message');
     const errorText = document.getElementById('error-text');
-    const appWrapper = document.getElementById('app-wrapper');
     const listModal = document.getElementById('list-modal');
     const closeModal = document.getElementById('close-modal');
     const loadingState = document.getElementById('loading-state');
@@ -381,57 +586,106 @@
     const listErrorText = document.getElementById('list-error-text');
     const retryLoad = document.getElementById('retry-load');
 
-    // User management functions
-    function getUserId() {
-      let userId = localStorage.getItem('blockedListUserId');
-      if (!userId) {
-        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('blockedListUserId', userId);
-      }
-      return userId;
-    }
+    // Current user
+    let currentUser = null;
 
-    function saveUserInfo(name, avatarUrl) {
-      localStorage.setItem('blockedListUserName', name || '');
-      localStorage.setItem('blockedListUserAvatar', avatarUrl || '');
-    }
-
-    function loadUserInfo() {
-      const savedName = localStorage.getItem('blockedListUserName');
-      const savedAvatar = localStorage.getItem('blockedListUserAvatar');
+    // Initialize app
+    function initApp() {
+      // Check if user has an account
+      const account = UserAccount.getAccount();
       
-      if (savedName) {
-        document.getElementById('submitter-name').value = savedName;
-      }
-      if (savedAvatar) {
-        document.getElementById('submitter-avatar').value = savedAvatar;
+      if (!account) {
+        // Show account creation modal
+        accountModal.classList.remove('hidden');
+        appWrapper.classList.add('hidden');
+      } else {
+        // User has account, show main app
+        currentUser = account;
+        updateUserProfile();
+        accountModal.classList.add('hidden');
+        appWrapper.classList.remove('hidden');
       }
     }
 
-    function generateAvatarUrl(name) {
-      if (!name) return 'https://ui-avatars.com/api/?name=User&background=667eea&color=fff&size=100';
+    // Update user profile display
+    function updateUserProfile() {
+      if (!currentUser) return;
       
-      const initials = name
-        .split(' ')
-        .map(word => word[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
+      const displayName = UserAccount.getDisplayName(currentUser);
+      const avatarUrl = UserAccount.getAvatarUrl(currentUser);
       
-      // Generate a consistent color based on the name
-      let hash = 0;
-      for (let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      currentUserName.textContent = displayName;
+      currentUserAvatar.src = avatarUrl;
+      currentUserAvatar.alt = displayName;
+    }
+
+    // Handle avatar upload
+    avatarPreview.addEventListener('click', () => {
+      avatarUpload.click();
+    });
+
+    avatarUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
       }
       
-      const colors = [
-        '#667eea', '#764ba2', '#f56565', '#ed8936', '#ecc94b',
-        '#48bb78', '#38b2ac', '#4299e1', '#9f7aea', '#ed64a6'
-      ];
-      const colorIndex = Math.abs(hash) % colors.length;
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB');
+        return;
+      }
       
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${colors[colorIndex].replace('#', '')}&color=fff&size=100`;
-    }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        avatarPreview.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Handle account creation
+    accountForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const nameInput = document.getElementById('account-name');
+      const usernameInput = document.getElementById('account-username');
+      
+      if (!nameInput.value.trim()) {
+        alert('Please enter your name');
+        nameInput.focus();
+        return;
+      }
+      
+      // Create account
+      currentUser = UserAccount.createAccount(
+        nameInput.value.trim(),
+        usernameInput.value.trim(),
+        avatarPreview.src
+      );
+      
+      // Switch to main app
+      updateUserProfile();
+      accountModal.classList.add('hidden');
+      appWrapper.classList.remove('hidden');
+      document.getElementById('name-input').focus();
+    });
+
+    // Handle change account
+    changeAccountBtn.addEventListener('click', () => {
+      if (confirm('Do you want to switch to a different account? Your current account will be removed.')) {
+        UserAccount.deleteAccount();
+        accountModal.classList.remove('hidden');
+        appWrapper.classList.add('hidden');
+        
+        // Reset form
+        document.getElementById('account-name').value = '';
+        document.getElementById('account-username').value = '';
+        avatarPreview.src = 'https://ui-avatars.com/api/?name=User&background=667eea&color=fff&size=160';
+      }
+    });
 
     // Hide messages
     function hideMessages() {
@@ -459,30 +713,23 @@
     submissionForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
+      if (!currentUser) {
+        showError('Please create an account first');
+        return;
+      }
+      
       const nameInput = document.getElementById('name-input');
       const notesInput = document.getElementById('notes-input');
-      const submitterNameInput = document.getElementById('submitter-name');
-      const submitterAvatarInput = document.getElementById('submitter-avatar');
       
-      // Validate required fields
       if (!nameInput.value.trim()) {
         showError('Please enter the name of the blocked person');
         nameInput.focus();
         return;
       }
       
-      if (!submitterNameInput.value.trim()) {
-        showError('Please enter your name');
-        submitterNameInput.focus();
-        return;
-      }
-      
-      // Save user info for future use
-      saveUserInfo(submitterNameInput.value.trim(), submitterAvatarInput.value.trim());
-      
       // Show loading state
       submitBtn.disabled = true;
-      submitText.textContent = 'Submitting...';
+      submitText.textContent = 'Adding...';
       hideMessages();
       
       try {
@@ -492,13 +739,12 @@
         // Create form data
         const formData = new FormData();
         formData.append('entry.714302158', nameInput.value.trim());  // Blocked person name
-        formData.append('entry.1541466423', notesInput.value.trim()); // Notes
         
-        // We need to add new fields for submitter info in your Google Form
-        // For now, we'll append submitter info to notes
+        // Include user info in notes
+        const userDisplayName = UserAccount.getDisplayName(currentUser);
         const fullNotes = notesInput.value.trim() + 
           (notesInput.value.trim() ? '\n\n' : '') +
-          `Submitted by: ${submitterNameInput.value.trim()}`;
+          `🚨 Reported by: ${userDisplayName}`;
         
         formData.append('entry.1541466423', fullNotes);
         
@@ -512,10 +758,14 @@
         // Show success
         showSuccess();
         
-        // Clear only the blocked person fields
+        // Clear form
         nameInput.value = '';
         notesInput.value = '';
         nameInput.focus();
+        
+        // Update last active
+        currentUser = UserAccount.updateAccount({});
+        updateUserProfile();
         
       } catch (error) {
         showError('Failed to submit. Please check your connection and try again.');
@@ -569,51 +819,57 @@
         
         // Process and display data
         let hasData = false;
-        rows.slice(1).reverse().forEach((row, index) => { // Reverse to show newest first
+        rows.slice(1).reverse().forEach((row, index) => {
           const name = nameIndex >= 0 ? (row[nameIndex] || '').trim() : '';
           let notes = notesIndex >= 0 ? (row[notesIndex] || '').trim() : '';
           
           if (name || notes) {
             hasData = true;
             
-            // Extract submitter info from notes
-            let submitterName = 'Anonymous';
-            let submitterAvatar = '';
+            // Extract user info from notes
+            let userName = 'Anonymous';
+            let userAvatar = '';
             
-            const submittedByMatch = notes.match(/Submitted by:\s*(.+)/);
-            if (submittedByMatch) {
-              submitterName = submittedByMatch[1].trim();
-              // Remove the "Submitted by:" part from notes
-              notes = notes.replace(/Submitted by:\s*.+/, '').trim();
+            const reportedByMatch = notes.match(/🚨 Reported by:\s*(.+)/);
+            if (reportedByMatch) {
+              userName = reportedByMatch[1].trim();
+              // Remove the "Reported by:" part from notes
+              notes = notes.replace(/🚨 Reported by:\s*.+/, '').trim();
             }
             
-            // Generate avatar URL
-            submitterAvatar = generateAvatarUrl(submitterName);
+            // Generate avatar based on username/name
+            userAvatar = UserAccount.generateDefaultAvatar(userName.replace('@', ''));
             
             // Create chat message
             const entryDiv = document.createElement('div');
             entryDiv.className = 'chat-message';
             
-            // Alternate between left and right alignment for visual variety
-            if (index % 2 === 0) {
+            // Check if this message is from current user
+            const isCurrentUser = currentUser && 
+              (userName === UserAccount.getDisplayName(currentUser) || 
+               userName.replace('@', '') === currentUser.username ||
+               userName === currentUser.name);
+            
+            if (isCurrentUser) {
               entryDiv.classList.add('sent');
             }
             
             const timestamp = new Date();
             const timeString = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dateString = timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' });
             
             entryDiv.innerHTML = `
-              <img src="${submitterAvatar}" 
-                   alt="${submitterName}"
+              <img src="${userAvatar}" 
+                   alt="${userName}"
                    class="chat-avatar"
-                   onerror="this.src='https://ui-avatars.com/api/?name=${submitterName.charAt(0)}&background=667eea&color=fff&size=100'">
+                   onerror="this.src='https://ui-avatars.com/api/?name=${userName.charAt(0)}&background=667eea&color=fff&size=100'">
               
               <div class="chat-bubble">
                 <div class="chat-sender">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                  ${submitterName}
+                  ${userName}
                 </div>
                 
                 ${name ? `
@@ -629,7 +885,7 @@
                 </div>
                 ` : notes ? `<div>${notes}</div>` : ''}
                 
-                <div class="chat-time">${timeString}</div>
+                <div class="chat-time">${timeString} • ${dateString}</div>
               </div>
             `;
             
@@ -799,11 +1055,8 @@
       window.elementSdk.init(elementHandler);
     }
 
-    // Load saved user info on page load
-    window.addEventListener('DOMContentLoaded', () => {
-      loadUserInfo();
-      document.getElementById('name-input').focus();
-    });
+    // Initialize app on page load
+    window.addEventListener('DOMContentLoaded', initApp);
   </script>
 </body>
 </html>
