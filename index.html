@@ -52,7 +52,7 @@
     .modal-content {
       background: white;
       border-radius: 1.5rem;
-      max-width: 900px;
+      max-width: 800px;
       width: 100%;
       max-height: 80vh;
       overflow: hidden;
@@ -157,18 +157,9 @@
         
         <!-- List Container -->
         <div id="list-container" class="hidden overflow-y-auto max-h-[60vh]">
-          <table class="w-full border-collapse">
-            <thead>
-              <tr class="border-b-2" style="border-color: #e2e8f0;">
-                <th class="text-left py-3 px-4 font-semibold" style="color: #2d3748;">Date & Time</th>
-                <th class="text-left py-3 px-4 font-semibold" style="color: #2d3748;">Name</th>
-                <th class="text-left py-3 px-4 font-semibold" style="color: #2d3748;">Notes</th>
-              </tr>
-            </thead>
-            <tbody id="list-body">
-              <!-- List items will be populated here -->
-            </tbody>
-          </table>
+          <div id="list-body" class="space-y-3">
+            <!-- List items will be populated here -->
+          </div>
           
           <!-- No Data Message -->
           <div id="no-data" class="hidden text-center py-8">
@@ -299,7 +290,7 @@
       }
     });
 
-    // Function to fetch data from Google Sheets using CSV export (more reliable)
+    // Function to fetch data from Google Sheets using the correct public URL
     async function fetchSheetData() {
       try {
         loadingState.classList.remove('hidden');
@@ -307,19 +298,30 @@
         noData.classList.add('hidden');
         listError.classList.add('hidden');
         
-        // Use CSV export which is more reliable for public sheets
-        const csvUrl = `https://docs.google.com/spreadsheets/d/e/2PACX-1vT-vMzwP8GR6AJTlKDLjKprX-xcTzH7_mqOLydufby1xGYewdOmZf49YwmxfvVMOVubtrEja-a7O8xY/pub?output=csv`;
+        // Get the public CSV URL from your Google Sheet
+        // First, let's try the standard CSV export URL
+        const sheetId = '1KKB-uxdVFvRSGHex192unt9D691Zh9SwUILXtD5Q7GM';
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+        
+        console.log('Fetching from:', csvUrl);
         
         const response = await fetch(csvUrl);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const csvText = await response.text();
+        console.log('CSV Data received:', csvText.substring(0, 200));
         
         // Parse CSV
         const rows = parseCSV(csvText);
+        console.log('Parsed rows:', rows);
         
         // Clear previous data
         listBody.innerHTML = '';
         
-        if (rows.length === 0) {
+        if (rows.length <= 1) { // Only header or empty
           loadingState.classList.add('hidden');
           noData.classList.remove('hidden');
           listContainer.classList.remove('hidden');
@@ -328,47 +330,61 @@
         
         // Get headers (first row)
         const headers = rows[0];
+        console.log('Headers:', headers);
         
-        // Find column indices
-        const timestampIndex = headers.findIndex(h => 
-          h.toLowerCase().includes('timestamp') || h.toLowerCase().includes('date')
-        );
+        // Find column indices - looking for name and notes columns
         const nameIndex = headers.findIndex(h => 
-          h.toLowerCase().includes('name') || h.toLowerCase().includes('blocked')
+          h && (h.toLowerCase().includes('name') || h.toLowerCase().includes('blocked'))
         );
+        
         const notesIndex = headers.findIndex(h => 
-          h.toLowerCase().includes('notes') || h.toLowerCase().includes('business')
+          h && (h.toLowerCase().includes('note') || h.toLowerCase().includes('business') || h.toLowerCase().includes('info'))
         );
+        
+        console.log('Name index:', nameIndex, 'Notes index:', notesIndex);
         
         // Display data rows (skip header row)
+        let hasData = false;
         rows.slice(1).forEach((row, index) => {
-          const tr = document.createElement('tr');
-          tr.className = index % 2 === 0 ? 'bg-gray-50' : 'bg-white';
+          // Check if row has any data in name or notes columns
+          const name = nameIndex >= 0 ? (row[nameIndex] || '').trim() : '';
+          const notes = notesIndex >= 0 ? (row[notesIndex] || '').trim() : '';
           
-          const timestamp = timestampIndex >= 0 ? (row[timestampIndex] || '') : '';
-          const name = nameIndex >= 0 ? (row[nameIndex] || '') : '';
-          const notes = notesIndex >= 0 ? (row[notesIndex] || '') : '';
-          
-          // Format date if it exists
-          let formattedDate = timestamp;
-          if (timestamp) {
-            try {
-              const date = new Date(timestamp);
-              if (!isNaN(date.getTime())) {
-                formattedDate = date.toLocaleString();
-              }
-            } catch (e) {
-              // Keep original if parsing fails
+          if (name || notes) {
+            hasData = true;
+            
+            const entryDiv = document.createElement('div');
+            entryDiv.className = 'p-4 rounded-xl border-2 transition-all hover:shadow-md';
+            entryDiv.style.borderColor = '#e2e8f0';
+            entryDiv.style.backgroundColor = index % 2 === 0 ? '#f8fafc' : '#ffffff';
+            
+            let html = '';
+            
+            if (name) {
+              html += `<div class="mb-2">
+                <span class="font-bold" style="color: #2d3748;">Name:</span>
+                <span class="ml-2" style="color: #4a5568;">${name}</span>
+              </div>`;
             }
+            
+            if (notes) {
+              html += `<div>
+                <span class="font-bold" style="color: #2d3748;">Notes:</span>
+                <span class="ml-2" style="color: #4a5568;">${notes}</span>
+              </div>`;
+            }
+            
+            entryDiv.innerHTML = html;
+            listBody.appendChild(entryDiv);
           }
-          
-          tr.innerHTML = `
-            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748; white-space: nowrap;">${formattedDate}</td>
-            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748;">${name}</td>
-            <td class="py-3 px-4 border-b" style="border-color: #e2e8f0; color: #2d3748;">${notes}</td>
-          `;
-          listBody.appendChild(tr);
         });
+        
+        if (!hasData) {
+          loadingState.classList.add('hidden');
+          noData.classList.remove('hidden');
+          listContainer.classList.remove('hidden');
+          return;
+        }
         
         loadingState.classList.add('hidden');
         listContainer.classList.remove('hidden');
@@ -376,7 +392,7 @@
       } catch (error) {
         console.error('Error fetching sheet data:', error);
         loadingState.classList.add('hidden');
-        listErrorText.textContent = 'Failed to load list. Please try again.';
+        listErrorText.textContent = 'Failed to load list. Please make sure the Google Sheet is published to the web.';
         listError.classList.remove('hidden');
       }
     }
